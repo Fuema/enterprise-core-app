@@ -16,6 +16,18 @@ const REFRESH_KEY = 'mock-api:refresh-session';
 
 const accessTokens = new Map<string, { userId: number; expiresAt: number }>();
 
+/** Counters exposed to automated tests (see mocks/browser.ts -> window.__mockApi). */
+const stats = { loginCount: 0, refreshCount: 0 };
+
+/** Test hook: expire every issued access token so the next API call exercises silent refresh. */
+export function expireAllAccessTokens(): void {
+  for (const session of accessTokens.values()) session.expiresAt = 0;
+}
+
+export function getMockStats(): { loginCount: number; refreshCount: number } {
+  return { ...stats };
+}
+
 function issueAccessToken(user: MockUser): string {
   const token = `mock.${user.username}.${crypto.randomUUID()}`;
   accessTokens.set(token, { userId: user.id, expiresAt: Date.now() + ACCESS_TOKEN_TTL_MS });
@@ -81,6 +93,7 @@ export const authHandlers = [
     const body = (await readBody(request)) as LoginBody | undefined;
     const user = users.find((u) => u.username === body?.username && u.password === body.password);
     if (!user) return problem(401, 'Invalid username or password');
+    stats.loginCount += 1;
     setRefreshSession(user.id);
     return ok({ accessToken: issueAccessToken(user), user: toUserDto(user) });
   }),
@@ -89,6 +102,7 @@ export const authHandlers = [
     await delay(150);
     const user = getRefreshSession();
     if (!user) return problem(401, 'Refresh session expired');
+    stats.refreshCount += 1;
     return ok({ accessToken: issueAccessToken(user) });
   }),
 
@@ -99,8 +113,8 @@ export const authHandlers = [
   }),
 
   http.post(api(env.VITE_AUTH_LOGOUT_PATH), async () => {
+    setRefreshSession(null); // like a real server: the cookie is invalid as soon as the request arrives
     await delay(100);
-    setRefreshSession(null);
     return noContent();
   }),
 ];

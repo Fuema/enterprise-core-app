@@ -16,7 +16,12 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "verify:all": "npm run verify && npm run test:e2e",
+    "setup": "powershell -ExecutionPolicy Bypass -File ./setup.ps1",
     "deps:pin": "node scripts/pin-versions.mjs",
     "deps:latest": "npx npm-check-updates@latest -u --reject typescript && npm install"
   },
@@ -40,6 +45,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-cli": "^1.167.45",
     "@tanstack/router-plugin": "^1.168.47",

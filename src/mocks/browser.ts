@@ -1,5 +1,5 @@
 import { setupWorker } from 'msw/browser';
-import { authHandlers } from './handlers/auth';
+import { authHandlers, expireAllAccessTokens, getMockStats } from './handlers/auth';
 import { employeeHandlers } from './handlers/employees';
 
 /**
@@ -11,11 +11,25 @@ import { employeeHandlers } from './handlers/employees';
  */
 export const worker = setupWorker(...authHandlers, ...employeeHandlers);
 
+/** Controls for automated tests (Playwright `page.evaluate`). Exists only while mocks run. */
+export interface MockApiControls {
+  /** Force every access token to expire: the next request must silently refresh. */
+  expireAccessTokens: () => void;
+  stats: () => { loginCount: number; refreshCount: number };
+}
+
+declare global {
+  interface Window {
+    __mockApi?: MockApiControls;
+  }
+}
+
 export async function startMocking(): Promise<void> {
   await worker.start({
     // MSW 3: anything not mocked (Vite assets, fonts, real third-party calls) passes through.
     onUnhandledFrame: 'bypass',
   });
+  window.__mockApi = { expireAccessTokens: expireAllAccessTokens, stats: getMockStats };
   console.info(
     '%c[mock api] enabled%c  users: admin/admin · manager/manager · viewer/viewer',
     'color:#fff;background:#7c3aed;padding:1px 6px;border-radius:3px',

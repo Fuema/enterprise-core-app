@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createTableSearchSchema, parseSelected, parseSort, serializeSort, toTableFilter } from './tableSearch';
+import {
+  createTableSearchSchema,
+  parseSelected,
+  parseSort,
+  serializeSort,
+  tableSearchDefaults,
+  toTableFilter,
+} from './tableSearch';
 
 interface Person {
   id: string;
@@ -47,6 +54,12 @@ describe('toTableFilter', () => {
   it('builds a typed GenericTableFilter', () => {
     const filter = toTableFilter<Person>({ page: 2, pageSize: 10, sort: 'hireDate.desc' }, ['lastName', 'hireDate']);
     expect(filter).toEqual({ page: 2, pageSize: 10, sort: [{ field: 'hireDate', direction: 'desc' }] });
+  });
+});
+
+describe('tableSearchDefaults', () => {
+  it('matches what the schema produces for an empty URL', () => {
+    expect(tableSearchDefaults({ defaultPageSize: 20 })).toEqual(schema.parse({}));
   });
 });
 

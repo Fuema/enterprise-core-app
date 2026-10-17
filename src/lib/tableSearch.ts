@@ -45,6 +45,17 @@ export function createTableSearchSchema<const TField extends string>(
   });
 }
 
+/**
+ * Default values of the table URL contract. Strip them from the URL with
+ * TanStack Router's `stripSearchParams` so URLs stay clean AND an "empty" URL
+ * can be detected (required for search-memory restore in routes/__root.tsx):
+ *
+ *   search: { middlewares: [stripSearchParams(tableSearchDefaults(options))] }
+ */
+export function tableSearchDefaults({ defaultPageSize }: TableSearchOptions): { page: number; pageSize: number } {
+  return { page: 1, pageSize: defaultPageSize };
+}
+
 /** Validated (output) shape shared by all table routes. */
 export interface TableSearch {
   page: number;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { env } from '@/lib/env';
-import { createTableSearchSchema, toTableFilter } from '@/lib/tableSearch';
+import { createTableSearchSchema, tableSearchDefaults, toTableFilter } from '@/lib/tableSearch';
 import type { GenericTableFilter } from '@/types/generic-api';
 import { EMPLOYEE_SORTABLE_FIELDS, type Employee } from './employee';
 
@@ -9,13 +9,16 @@ import { EMPLOYEE_SORTABLE_FIELDS, type Employee } from './employee';
  *   generic table params (page, pageSize, search, sort, selected)
  *   + feature filter `department`
  */
-export const employeeSearchSchema = createTableSearchSchema(EMPLOYEE_SORTABLE_FIELDS, {
-  defaultPageSize: env.VITE_DEFAULT_PAGE_SIZE,
-}).extend({
+const tableOptions = { defaultPageSize: env.VITE_DEFAULT_PAGE_SIZE };
+
+export const employeeSearchSchema = createTableSearchSchema(EMPLOYEE_SORTABLE_FIELDS, tableOptions).extend({
   department: z.string().optional().catch(undefined),
 });
 
 export type EmployeeSearch = z.output<typeof employeeSearchSchema>;
+
+/** Values omitted from the URL (see the route's `search.middlewares`). */
+export const employeeSearchDefaults = tableSearchDefaults(tableOptions);
 
 /** URL state -> filter passed to BaseApiService.getAll (and used as the query key). */
 export function toEmployeeFilter(search: EmployeeSearch): GenericTableFilter<Employee> {

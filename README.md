@@ -20,6 +20,12 @@ npm run dev
 For other environments create `.env.production` / `.env.<mode>.local` from `.env.example`.
 A missing or invalid variable stops `dev` and `build` immediately with a list of problems.
 
+## One-command setup
+```powershell
+npm run setup      # env files, npm ci, MSW worker, Playwright browser, verify, e2e
+```
+See `setup.ps1` (`-SkipE2E`, `-SkipVerify`).
+
 ## Mock backend (no server needed)
 ```bash
 npm install -D msw
@@ -39,7 +45,10 @@ The mock is never included in production builds.
 | `npm run typecheck:fast` | Same with the native `tsgo` compiler (preview) |
 | `npm run lint` | ESLint 10, type-aware rules |
 | `npm run test` | Vitest unit tests |
-| `npm run verify` | typecheck + lint + test + build: the definition of done |
+| `npm run verify` | typecheck + lint + unit tests + build |
+| `npm run test:e2e` | Playwright end-to-end suite (own dev server on :5174 with mocks) |
+| `npm run test:e2e:ui` | Interactive Playwright runner |
+| `npm run verify:all` | `verify` + `test:e2e`: the definition of done |
 | `npm run deps:latest` | Upgrade everything except TypeScript (see agents.md) |
 
 ## Layout at a glance

@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { createFileRoute, Link, useLocation } from '@tanstack/react-router';
+import { createFileRoute, Link, stripSearchParams, useLocation } from '@tanstack/react-router';
 import { Plus, RotateCcw } from 'lucide-react';
 import { useMemo } from 'react';
 import { GenericActionGuard } from '@/components/shared/GenericActionGuard';
@@ -10,6 +10,7 @@ import { employeeColumns } from '@/features/employees/components/employeeColumns
 import { employeeQueries } from '@/features/employees/services/employeeService';
 import { EMPLOYEE_DEPARTMENTS, EMPLOYEE_PERMISSIONS, type Employee } from '@/features/employees/types/employee';
 import {
+  employeeSearchDefaults,
   employeeSearchSchema,
   toEmployeeFilter,
   type EmployeeSearch,
@@ -22,6 +23,8 @@ const EMPTY_ROWS: Employee[] = [];
 
 export const Route = createFileRoute('/_authenticated/employees/')({
   validateSearch: employeeSearchSchema,
+  // Keep defaults out of the URL: clean links, and an empty URL triggers search-memory restore.
+  search: { middlewares: [stripSearchParams(employeeSearchDefaults)] },
   // The loader re-runs only when the filter changes; data is cached by TanStack Query.
   loaderDeps: ({ search }) => ({ filter: toEmployeeFilter(search) }),
   loader: ({ context, deps }) => context.queryClient.ensureQueryData(employeeQueries.list(deps.filter)),
