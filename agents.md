@@ -311,8 +311,24 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 
 ---
 
+## 🌿 Version Control
+*   Git repository at the project root, default branch `main` (initialised 2026-10-17, first commit `ecc20ea`). Repo-local config: `core.autocrlf=false`, `core.fileMode=false`.
+*   **Commit after each validated change** (definition of done met), one logical change per commit; the Change Log entry is part of the same commit.
+*   Message format: imperative summary line (≤ 72 chars), blank line, bullet body (what/why), `Validated: ...` line. Agent-authored commits end with the `Co-Authored-By:` trailer of the agent.
+*   Committed on purpose: `package-lock.json` (reproducible versions), `src/routeTree.gen.ts`, `public/mockServiceWorker.js`, `.env.example`, `.env.development` (non-secret localhost defaults).
+*   **Never commit secrets or real environment endpoints.** `.env.production` currently holds placeholders only; before it receives real values run `git rm --cached .env.production` and add it to `.gitignore`, or use `.env.production.local` (already ignored).
+*   Remote agents: git must delete its own lock/temp files, so the session needs delete permission on the project folder; if a git command fails with `unable to unlink ... Operation not permitted`, request that permission and remove the stale `.git/index.lock` before retrying.
+*   Windows: a repo created from another user context may trigger "dubious ownership"; fix once with `git config --global --add safe.directory C:/Users/fuema/source/repos/enterprise-core-app-claude`.
+
+---
+
 ## 📝 Change Log
 Newest first. One entry per working session; list what changed, why, and the key files.
+
+### 2026-10-17 — Version control
+- **Initialised** the git repository (`main`) and committed the validated template as `ecc20ea` (99 files; `node_modules`/`dist`/local env files excluded by `.gitignore`).
+- **Added** the 🌿 Version Control section (commit policy, message format, what is committed, secret handling, remote-agent and Windows notes).
+- Step 3 marked validated by the owner (full browser checklist passed).
 
 ### 2026-10-17 — Step 3: Employees feature (reference implementation)
 - **Added** `features/employees/*` (types, URL schema, service, form, columns, delete action) and routes `_authenticated/employees.tsx`, `employees/index.tsx`, `employees/new.tsx`, `employees/$employeeId.tsx`.
