@@ -21,6 +21,7 @@
     "test:e2e:report": "playwright show-report",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
     "verify:all": "npm run verify && npm run test:e2e",
+    "check:secrets": "node scripts/check-secrets.mjs",
     "setup": "powershell -ExecutionPolicy Bypass -File ./setup.ps1",
     "deps:pin": "node scripts/pin-versions.mjs",
     "deps:latest": "npx npm-check-updates@latest -u --reject typescript && npm install"
