@@ -14,6 +14,8 @@ Create a highly scalable, production-ready, and **100% type-safe frontend core t
 | 5 | Real backend (.NET 10 + SQL Server, `enterprise-core-app-claude-server`) + Employees on the real domain (DOB, gender, country/state/city cascade, address, pincode, bulk delete) | ✅ Owner-validated 2026-10-17 against the real SQL Server DB (`VITE_ENABLE_MOCKS=false`) |
 | 6 | Signup, Countries / States / Cities CRUD with per-feature permissions, registry-driven navigation + dashboard; e2e 29 tests | ✅ Validated 2026-10-17: owner browser check against the real SQL Server DB (admin creates countries, manager reads countries, viewer only reads employees) + `npm run verify:all` (43 unit, e2e 29/29) |
 
+| 7 | User administration: `/users` list + detail with permission matrix editor (users:read / users:write), deactivation, lock-out guards; e2e 36 tests | ✅ Validated 2026-10-17: `npm run verify:all` (48 unit, e2e 36/36) |
+
 Next feature? Follow **🧭 Feature Development Procedure** below and log the work in **📝 Change Log**.
 
 ---
@@ -94,23 +96,26 @@ Adding a variable = add it to `env.schema.ts`, `vite-env.d.ts`, `.env.example` a
 | Update | `PUT /resource/{id}` → **200 + the saved entity** (written straight into the detail cache) |
 | Validation | 400 `ValidationProblem`; `errors` keys are **camelCase field names** (`email`, `cityId`), messages are user-facing |
 | Lookups | `GET /lookups/<lookup>` → `[{ id, name }]` ordered by name, readable by any signed-in user (generic `lookupQueries` + `<LookupSelect>`); managing the same data is a separate, permission-protected resource (`/countries`...) |
+| Users | `GET /users?…&isActive=`, `GET /users/{id}`, `GET /users/permissions` → `{ scopes }`, `PUT /users/{id}` `{ displayName, email, roles[], permissions[], isActive }` (no create: signup; no delete: deactivate) |
 | In use | Deleting a row still referenced → **409** ProblemDetails with a human `detail` (shown next to the delete button) |
 | Bulk actions | `POST /resource/bulk-delete` `{ ids }` → `{ deletedCount }` |
 | Permissions | Access token carries `permission` claims; every endpoint enforces the same scopes as the UI (wildcards `res:*`, `*`) |
 
 Different backend? Override `BaseApiService.toQueryParams()` / `toPaginated()` / `parseEntity()`; never fork the generic layer.
 
-### Reference Backend (`C:\Users\fuema\source\repos\enterprise-core-app-claude-server`)
+### Reference Backend — https://github.com/Fuema/enterprise-core-api
+Local clone: `C:\Users\fuema\source\repos\enterprise-core-app-claude-server` (separate git repository, `main` tracks `origin/main`).
 ASP.NET Core 10 minimal API + EF Core 10 + SQL Server (`AngularCrudApi`). Implements every row above; its `README.md` is the backend's manual (run, endpoints, "Adding a resource").
 *   **Run:** `dotnet run --launch-profile http` → `http://localhost:7077` (Swagger `/swagger`, sample requests `AngularCrudApi.http`). Development startup applies `Database/Scripts/*.sql` (idempotent: `AppUsers`, `RefreshTokens`, unique index on `tblEmployeeMaster.EmailId`) and seeds `admin`/`manager`/`viewer` (password = username) when `AppUsers` is empty.
 *   **Frontend against it:** create `.env.development.local` (owner, not committed) with `VITE_API_BASE_URL=http://localhost:7077/api` and `VITE_ENABLE_MOCKS=false`. The e2e suite keeps using the mock (its env is fixed in `e2e/e2e.env.ts`).
 *   **Auth:** `Auth/` — HS256 JWT (15 min, claims `sub`, `name`, `email`, `role`, `permission`), refresh token = random 384-bit value stored as SHA-256 in `RefreshTokens`, single-use with rotation and reuse detection, cookie `ec_refresh` (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/auth`). Login is rate-limited (10/min/IP). `Jwt:SigningKey` comes from `dotnet user-secrets` / `Jwt__SigningKey`; Development falls back to an ephemeral key; other environments fail fast without one.
 *   **Policies:** one per scope in `Auth/Permissions.cs` (`Permissions.All`); groups use `.RequireAuthorization(Permissions.EmployeesRead)` and endpoints add write/delete. Scopes must equal the frontend `*_PERMISSIONS` constants. Current scopes: `employees`, `countries`, `states`, `cities` × `read|write|delete`.
 *   **Signup:** `POST /api/auth/register` (rate-limited like login). `Signup` config section: `Enabled`, `DefaultRoles` (`User`), `DefaultPermissions` (`employees:read`). Granting more access = update `dbo.AppUsers.Permissions` (no user-admin UI yet).
+*   **Users:** `Endpoint/UserEndpoints.cs` (`users:read` / `users:write`). Permissions are validated against `Permissions.All` (`IsGrantable`: a scope, `resource:*` or `*`); an admin cannot deactivate themselves or drop their own `users:write`; deactivating revokes the account's refresh tokens (signed out at the next refresh, ≤ `Jwt:AccessTokenMinutes`). Permission changes apply from the user's next token or sign-in.
 *   **Locations:** `Endpoint/CountryEndpoints.cs`, `StateEndpoints.cs`, `CityEndpoints.cs` (paged CRUD with usage counts, unique names per parent, 409 while in use, no re-parenting while children/employees exist; a city's country is copied from its state); `LookupEndpoints.cs` serves `/api/lookups/*` for dropdowns. Demo manager = employees read/write, countries + states read, cities read/write (script `002` upgrades an older seed).
 *   **Generic building blocks** (`Infrastructure/`): `PageRequest` (`[AsParameters]`, page size clamped 1–100) + `ToPagedAsync()` → `PagedResponse<T>`; `SortMap<T>` (allow-listed `field.asc,field.desc`, default sort, never SQL from input); `.WithValidation<TRequest>()` (DataAnnotations → camelCase `ValidationProblem`; minimal APIs do not run DataAnnotations on their own).
 *   **Rules:** response DTOs are classes with `init` properties (positional records stop EF from composing `Where/OrderBy` on the projection); cross-field rules return `Results.ValidationProblem` keyed by field; unique-index violations (SQL 2601/2627) map to the field; schema changes are new idempotent `Database/Scripts/00N_*.sql` files (the DB is database-first, no EF migrations).
-*   `_original/` keeps the pre-adaptation files (`*.bak`, not compiled) and the transfer bundles; safe to delete once the API is validated. The folder is not yet a git repository.
+*   Version control follows the same rules as this repo (Conventional Commits, explicit staging, no secrets: `Jwt:SigningKey` only in user-secrets / environment). A change to the API contract is committed in BOTH repositories, with matching Change Log entries.
 
 ### Mock Backend (`src/mocks/`, MSW)
 *   Enabled only when `vite dev` runs with `VITE_ENABLE_MOCKS=true`; loaded through a dynamic import in `main.tsx`, so it never reaches production bundles. Requires `public/mockServiceWorker.js` (`npx msw init public --save`).
@@ -184,6 +189,7 @@ src/
 │   │   ├── forms/        # employeeFormSchema.ts (Zod + defaults/mappers), EmployeeForm.tsx (GenericFormElement), EmployeeLocationFields.tsx (country→state→city cascade)
 │   │   ├── services/     # employeeService.ts (extends BaseApiService, + deleteMany) + employeeQueries (entityQueries) + locationQueries (re-export of locations/lookups)
 │   │   └── types/        # employee.ts (entity schema, sortable fields, permissions), employeeSearch.ts (URL schema + filter mapper)
+│   ├── users/            # Account admin: types (user, userSearch), services (userService + permissionCatalog query), forms (UserForm, PermissionEditor, permissionMatrix.ts pure helpers + test), components (userColumns)
 │   └── locations/        # Domain group: three sub-features with the employees shape + shared lookups
 │       ├── lookups.ts    # locationLookups (countries/states/cities dropdowns) — the ONLY file other features may import
 │       ├── countries/    # types (country, countrySearch), services (countryService + countryMutationOptions), forms, components
@@ -223,6 +229,7 @@ src/
 │   ├── _authenticated/employees/$employeeId.tsx   # Detail/edit (typed numeric param, breadcrumb from loader data)
 │   ├── _authenticated/{countries,states,cities}.tsx + /{index,new,$<entity>Id}.tsx   # Same pattern as employees
 │   ├── login.tsx         # + "Create an account" link (VITE_AUTH_SIGNUP_ENABLED)
+│   ├── _authenticated/users.tsx + /users/{index,$userId}.tsx   # Users list (status filter) + detail/edit (no create, no delete)
 │   ├── signup.tsx        # Public self-service registration → signed in → dashboard
 │   └── forbidden.tsx
 ├── services/             # STEP 2: GENERIC SERVICE LAYER
@@ -425,6 +432,15 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 
 ## 📝 Change Log
 Newest first. One entry per working session; list what changed, why, and the key files.
+
+### 2026-10-17 — User administration screen
+- **API:** `Endpoint/UserEndpoints.cs` — paged `GET /api/users` (search, `isActive` filter, sort), `GET /api/users/{id}`, `GET /api/users/permissions` (catalog = `Permissions.All`), `PUT /api/users/{id}` (display name, email, roles, permissions, active). New scopes `users:read`, `users:write` (admin `*` has them). Validation: unknown scopes, duplicate email, role format; lock-out guards (no self-deactivation, no removing own `users:write`); deactivation revokes refresh tokens.
+- **Frontend:** `features/users` + `/users`, `/users/$userId` routes. `PermissionEditor`: feature × View / Create-edit / Delete grid built from the API catalog, an "All" (`resource:*`) column and an Administrator (`*`) switch; pure logic in `permissionMatrix.ts` with unit tests. Registry entry "Users"; `FeaturePermissions.delete` is now optional and the access matrix shows `n/a` for it.
+- **Mock:** `handlers/users.ts` (same rules), `MockUser.isActive/createdAtUtc`, inactive accounts cannot log in or refresh.
+- **E2E:** `users.spec.ts` (7 tests: viewer + manager access, grant takes effect at next sign-in, All/expand behaviour, deactivation blocks sign-in, self lock-out guard, status filter); helpers `signOut`, `signInHere` (no reload, so mock changes survive) → 36 tests. Validated: `npm run verify:all` (e2e 36/36).
+
+### 2026-10-17 — Backend under version control
+- API published as its own repository: https://github.com/Fuema/enterprise-core-api (first commit `fd49a57`). `_original/` (pre-adaptation backups and transfer bundles) removed. Frontend commit `2d25ff7` pushed to `origin/main`.
 
 ### 2026-10-17 — Signup, location management, per-feature authorization, dashboard
 - **Signup:** API `POST /api/auth/register` (`RegisterRequest` DataAnnotations + strength/uniqueness rules, `Signup` options, rate-limited, signs in on success); frontend `/signup` route, `SignupForm`, `signupSchema`, `register()`/`useSignup`, link on the login page. Env: `VITE_AUTH_REGISTER_PATH` (default `/auth/register`), `VITE_AUTH_SIGNUP_ENABLED` (default `true`) — both optional, existing `.env` files keep working.

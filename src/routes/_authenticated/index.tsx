@@ -31,7 +31,7 @@ function DashboardPage() {
       </div>
 
       {visible.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
             <GenericActionGuard key={feature.key} permissions={[feature.permissions.read]}>
               <FeatureCard feature={feature} />
@@ -61,7 +61,19 @@ function DashboardPage() {
                     {feature.label}
                   </th>
                   {ACTIONS.map((action) => {
-                    const allowed = hasPermissions(granted, [feature.permissions[action]]);
+                    const scope = feature.permissions[action];
+                    if (scope === undefined) {
+                      return (
+                        <td
+                          key={action}
+                          className="px-2 py-1.5 text-center text-xs text-muted-foreground"
+                          aria-label={`${feature.label} ${ACTION_LABEL[action]}: not applicable`}
+                        >
+                          n/a
+                        </td>
+                      );
+                    }
+                    const allowed = hasPermissions(granted, [scope]);
                     return (
                       <td
                         key={action}

@@ -18,6 +18,24 @@ export async function loginAs(page: Page, user: MockUser): Promise<void> {
   await expect(page.getByText(DISPLAY_NAME[user], { exact: true })).toBeVisible();
 }
 
+/**
+ * Signs in on the login page that is ALREADY open (e.g. right after "Sign out"),
+ * without page.goto: a reload would reseed the mock DB and lose changes made in the test.
+ */
+export async function signInHere(page: Page, user: MockUser): Promise<void> {
+  await expect(page).toHaveURL(/\/login/);
+  await page.getByLabel('Username').fill(user);
+  await page.getByLabel('Password').fill(user);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByText(DISPLAY_NAME[user], { exact: true })).toBeVisible();
+}
+
+/** Clicks "Sign out" and waits for the login page (logout must finish before the next sign-in). */
+export async function signOut(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/login/);
+}
+
 /** Data rows of the generic data table (header excluded). */
 export function tableRows(page: Page): Locator {
   return page.locator('table tbody tr');

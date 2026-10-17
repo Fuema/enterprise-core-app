@@ -46,7 +46,7 @@ function setRefreshSession(userId: number | null): void {
 function getRefreshSession(): MockUser | undefined {
   try {
     const id = Number(sessionStorage.getItem(REFRESH_KEY));
-    return users.find((u) => u.id === id);
+    return users.find((u) => u.id === id && u.isActive);
   } catch {
     return undefined;
   }
@@ -74,7 +74,7 @@ export function authorize(request: Request, required: readonly string[] = []): M
     accessTokens.delete(token);
     return problem(401, 'Access token is missing or expired');
   }
-  const user = users.find((u) => u.id === session.userId);
+  const user = users.find((u) => u.id === session.userId && u.isActive);
   if (!user) return problem(401, 'Unknown user');
   if (!hasPermissions(user.permissions, required)) {
     return problem(403, `Missing permission: ${required.join(', ')}`);
@@ -121,7 +121,7 @@ export const authHandlers = [
   http.post(api(env.VITE_AUTH_LOGIN_PATH), async ({ request }) => {
     await delay(400);
     const body = (await readBody(request)) as LoginBody | undefined;
-    const user = users.find((u) => u.username === body?.username && u.password === body.password);
+    const user = users.find((u) => u.username === body?.username && u.password === body.password && u.isActive);
     if (!user) return problem(401, 'Invalid username or password');
     stats.loginCount += 1;
     setRefreshSession(user.id);
@@ -141,6 +141,8 @@ export const authHandlers = [
       email: text(body?.email),
       roles: [...SIGNUP_DEFAULTS.roles],
       permissions: [...SIGNUP_DEFAULTS.permissions],
+      isActive: true,
+      createdAtUtc: new Date().toISOString(),
     };
     users.push(user);
     stats.loginCount += 1;

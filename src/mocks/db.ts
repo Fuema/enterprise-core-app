@@ -12,6 +12,9 @@ export interface MockUser {
   email: string;
   roles: string[];
   permissions: string[];
+  /** Inactive accounts cannot sign in or refresh (API: AppUser.IsActive). */
+  isActive: boolean;
+  createdAtUtc: string;
 }
 
 /** Same shape as EmployeeResponse in the .NET API. */
@@ -58,6 +61,8 @@ export const users: MockUser[] = [
     email: 'admin@example.test',
     roles: ['Administrator'],
     permissions: ['*'],
+    isActive: true,
+    createdAtUtc: '2026-01-05T09:00:00Z',
   },
   {
     id: 2,
@@ -68,6 +73,8 @@ export const users: MockUser[] = [
     roles: ['HR Manager'],
     // Edits employees and cities; only looks at countries and states (same as the API's seeded manager).
     permissions: ['employees:read', 'employees:write', 'countries:read', 'states:read', 'cities:read', 'cities:write'],
+    isActive: true,
+    createdAtUtc: '2026-02-10T09:00:00Z',
   },
   {
     id: 3,
@@ -77,6 +84,8 @@ export const users: MockUser[] = [
     email: 'viewer@example.test',
     roles: ['Auditor'],
     permissions: ['employees:read'],
+    isActive: true,
+    createdAtUtc: '2026-03-15T09:00:00Z',
   },
 ];
 
@@ -128,6 +137,15 @@ export const cities: MockCity[] = [
 ];
 
 /** Self-service signup defaults (API: Signup:DefaultRoles / Signup:DefaultPermissions). */
+/** Grantable scopes (API: Permissions.All, served by GET /users/permissions). */
+export const PERMISSION_CATALOG: readonly string[] = [
+  'employees:read', 'employees:write', 'employees:delete',
+  'countries:read', 'countries:write', 'countries:delete',
+  'states:read', 'states:write', 'states:delete',
+  'cities:read', 'cities:write', 'cities:delete',
+  'users:read', 'users:write',
+];
+
 export const SIGNUP_DEFAULTS = { roles: ['User'], permissions: ['employees:read'] } as const;
 
 export function nextId(rows: readonly { id: number }[]): number {

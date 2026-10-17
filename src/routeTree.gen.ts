@@ -18,6 +18,7 @@ import { Route as AuthenticatedCitiesRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedCountriesRouteImport } from './routes/_authenticated/countries'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedStatesRouteImport } from './routes/_authenticated/states'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedCitiesIndexRouteImport } from './routes/_authenticated/cities/index'
 import { Route as AuthenticatedCitiesCityIdRouteImport } from './routes/_authenticated/cities/$cityId'
 import { Route as AuthenticatedCitiesNewRouteImport } from './routes/_authenticated/cities/new'
@@ -30,6 +31,8 @@ import { Route as AuthenticatedEmployeesNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedStatesIndexRouteImport } from './routes/_authenticated/states/index'
 import { Route as AuthenticatedStatesStateIdRouteImport } from './routes/_authenticated/states/$stateId'
 import { Route as AuthenticatedStatesNewRouteImport } from './routes/_authenticated/states/new'
+import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
+import { Route as AuthenticatedUsersUserIdRouteImport } from './routes/_authenticated/users/$userId'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -73,6 +76,11 @@ const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
 const AuthenticatedStatesRoute = AuthenticatedStatesRouteImport.update({
   id: '/states',
   path: '/states',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedCitiesIndexRoute =
@@ -145,6 +153,17 @@ const AuthenticatedStatesNewRoute = AuthenticatedStatesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AuthenticatedStatesRoute,
 } as any)
+const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedUsersRoute,
+} as any)
+const AuthenticatedUsersUserIdRoute =
+  AuthenticatedUsersUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => AuthenticatedUsersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -155,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/countries': typeof AuthenticatedCountriesRouteWithChildren
   '/employees': typeof AuthenticatedEmployeesRouteWithChildren
   '/states': typeof AuthenticatedStatesRouteWithChildren
+  '/users': typeof AuthenticatedUsersRouteWithChildren
   '/cities/$cityId': typeof AuthenticatedCitiesCityIdRoute
   '/cities/new': typeof AuthenticatedCitiesNewRoute
   '/countries/$countryId': typeof AuthenticatedCountriesCountryIdRoute
@@ -163,10 +183,12 @@ export interface FileRoutesByFullPath {
   '/employees/new': typeof AuthenticatedEmployeesNewRoute
   '/states/$stateId': typeof AuthenticatedStatesStateIdRoute
   '/states/new': typeof AuthenticatedStatesNewRoute
+  '/users/$userId': typeof AuthenticatedUsersUserIdRoute
   '/cities/': typeof AuthenticatedCitiesIndexRoute
   '/countries/': typeof AuthenticatedCountriesIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/states/': typeof AuthenticatedStatesIndexRoute
+  '/users/': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/forbidden': typeof ForbiddenRoute
@@ -181,10 +203,12 @@ export interface FileRoutesByTo {
   '/employees/new': typeof AuthenticatedEmployeesNewRoute
   '/states/$stateId': typeof AuthenticatedStatesStateIdRoute
   '/states/new': typeof AuthenticatedStatesNewRoute
+  '/users/$userId': typeof AuthenticatedUsersUserIdRoute
   '/cities': typeof AuthenticatedCitiesIndexRoute
   '/countries': typeof AuthenticatedCountriesIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
   '/states': typeof AuthenticatedStatesIndexRoute
+  '/users': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -196,6 +220,7 @@ export interface FileRoutesById {
   '/_authenticated/countries': typeof AuthenticatedCountriesRouteWithChildren
   '/_authenticated/employees': typeof AuthenticatedEmployeesRouteWithChildren
   '/_authenticated/states': typeof AuthenticatedStatesRouteWithChildren
+  '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/cities/$cityId': typeof AuthenticatedCitiesCityIdRoute
   '/_authenticated/cities/new': typeof AuthenticatedCitiesNewRoute
@@ -205,10 +230,12 @@ export interface FileRoutesById {
   '/_authenticated/employees/new': typeof AuthenticatedEmployeesNewRoute
   '/_authenticated/states/$stateId': typeof AuthenticatedStatesStateIdRoute
   '/_authenticated/states/new': typeof AuthenticatedStatesNewRoute
+  '/_authenticated/users/$userId': typeof AuthenticatedUsersUserIdRoute
   '/_authenticated/cities/': typeof AuthenticatedCitiesIndexRoute
   '/_authenticated/countries/': typeof AuthenticatedCountriesIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
   '/_authenticated/states/': typeof AuthenticatedStatesIndexRoute
+  '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -221,6 +248,7 @@ export interface FileRouteTypes {
     | '/countries'
     | '/employees'
     | '/states'
+    | '/users'
     | '/cities/$cityId'
     | '/cities/new'
     | '/countries/$countryId'
@@ -229,10 +257,12 @@ export interface FileRouteTypes {
     | '/employees/new'
     | '/states/$stateId'
     | '/states/new'
+    | '/users/$userId'
     | '/cities/'
     | '/countries/'
     | '/employees/'
     | '/states/'
+    | '/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forbidden'
@@ -247,10 +277,12 @@ export interface FileRouteTypes {
     | '/employees/new'
     | '/states/$stateId'
     | '/states/new'
+    | '/users/$userId'
     | '/cities'
     | '/countries'
     | '/employees'
     | '/states'
+    | '/users'
   id:
     | '__root__'
     | '/_authenticated'
@@ -261,6 +293,7 @@ export interface FileRouteTypes {
     | '/_authenticated/countries'
     | '/_authenticated/employees'
     | '/_authenticated/states'
+    | '/_authenticated/users'
     | '/_authenticated/'
     | '/_authenticated/cities/$cityId'
     | '/_authenticated/cities/new'
@@ -270,10 +303,12 @@ export interface FileRouteTypes {
     | '/_authenticated/employees/new'
     | '/_authenticated/states/$stateId'
     | '/_authenticated/states/new'
+    | '/_authenticated/users/$userId'
     | '/_authenticated/cities/'
     | '/_authenticated/countries/'
     | '/_authenticated/employees/'
     | '/_authenticated/states/'
+    | '/_authenticated/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -346,6 +381,13 @@ declare module '@tanstack/react-router' {
       path: '/states'
       fullPath: '/states'
       preLoaderRoute: typeof AuthenticatedStatesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/cities/': {
@@ -432,6 +474,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStatesNewRouteImport
       parentRoute: typeof AuthenticatedStatesRoute
     }
+    '/_authenticated/users/': {
+      id: '/_authenticated/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
+      parentRoute: typeof AuthenticatedUsersRoute
+    }
+    '/_authenticated/users/$userId': {
+      id: '/_authenticated/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof AuthenticatedUsersUserIdRouteImport
+      parentRoute: typeof AuthenticatedUsersRoute
+    }
   }
 }
 
@@ -502,11 +558,25 @@ const AuthenticatedStatesRouteChildren: AuthenticatedStatesRouteChildren = {
 const AuthenticatedStatesRouteWithChildren =
   AuthenticatedStatesRoute._addFileChildren(AuthenticatedStatesRouteChildren)
 
+interface AuthenticatedUsersRouteChildren {
+  AuthenticatedUsersUserIdRoute: typeof AuthenticatedUsersUserIdRoute
+  AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
+}
+
+const AuthenticatedUsersRouteChildren: AuthenticatedUsersRouteChildren = {
+  AuthenticatedUsersUserIdRoute: AuthenticatedUsersUserIdRoute,
+  AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
+}
+
+const AuthenticatedUsersRouteWithChildren =
+  AuthenticatedUsersRoute._addFileChildren(AuthenticatedUsersRouteChildren)
+
 interface AuthenticatedRouteChildren {
   AuthenticatedCitiesRoute: typeof AuthenticatedCitiesRouteWithChildren
   AuthenticatedCountriesRoute: typeof AuthenticatedCountriesRouteWithChildren
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRouteWithChildren
   AuthenticatedStatesRoute: typeof AuthenticatedStatesRouteWithChildren
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -515,6 +585,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCountriesRoute: AuthenticatedCountriesRouteWithChildren,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRouteWithChildren,
   AuthenticatedStatesRoute: AuthenticatedStatesRouteWithChildren,
+  AuthenticatedUsersRoute: AuthenticatedUsersRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

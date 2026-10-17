@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { LinkProps } from '@tanstack/react-router';
-import { Building2, Globe2, Map as MapIcon, Users, type LucideIcon } from 'lucide-react';
+import { Building2, Globe2, Map as MapIcon, UserCog, Users, type LucideIcon } from 'lucide-react';
 import { EMPLOYEE_PERMISSIONS } from '@/features/employees/types/employee';
 import { employeeQueries } from '@/features/employees/services/employeeService';
 import { cityQueries } from '@/features/locations/cities/services/cityService';
@@ -9,6 +9,8 @@ import { countryQueries } from '@/features/locations/countries/services/countryS
 import { COUNTRY_PERMISSIONS } from '@/features/locations/countries/types/country';
 import { stateQueries } from '@/features/locations/states/services/stateService';
 import { STATE_PERMISSIONS } from '@/features/locations/states/types/state';
+import { userQueries } from '@/features/users/services/userService';
+import { USER_PERMISSIONS } from '@/features/users/types/user';
 
 /** Smallest page: we only need `totalCount`. */
 const COUNT_FILTER = { page: 1, pageSize: 1 } as const;
@@ -16,7 +18,8 @@ const COUNT_FILTER = { page: 1, pageSize: 1 } as const;
 export interface FeaturePermissions {
   read: string;
   write: string;
-  delete: string;
+  /** Omitted when the feature has no delete (e.g. users are deactivated instead). */
+  delete?: string;
 }
 
 export interface FeatureEntry {
@@ -72,5 +75,14 @@ export const FEATURES: readonly FeatureEntry[] = [
     icon: Building2,
     permissions: CITY_PERMISSIONS,
     useCount: () => useQuery({ ...cityQueries.list(COUNT_FILTER), select: (page) => page.totalCount }).data,
+  },
+  {
+    key: 'users',
+    label: 'Users',
+    description: 'Accounts, roles and per-feature permissions.',
+    to: '/users',
+    icon: UserCog,
+    permissions: USER_PERMISSIONS,
+    useCount: () => useQuery({ ...userQueries.list(COUNT_FILTER), select: (page) => page.totalCount }).data,
   },
 ];

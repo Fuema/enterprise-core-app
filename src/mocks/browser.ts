@@ -3,6 +3,7 @@ import { authHandlers, expireAllAccessTokens, getMockStats } from './handlers/au
 import { employeeHandlers } from './handlers/employees';
 import { locationHandlers } from './handlers/locations';
 import { lookupHandlers } from './handlers/lookups';
+import { userHandlers } from './handlers/users';
 
 /**
  * Mock Service Worker: intercepts the app's real HTTP calls in the browser.
@@ -11,7 +12,7 @@ import { lookupHandlers } from './handlers/lookups';
  *
  * Add handlers for new resources in ./handlers and register them here.
  */
-export const worker = setupWorker(...authHandlers, ...employeeHandlers, ...lookupHandlers, ...locationHandlers);
+export const worker = setupWorker(...authHandlers, ...employeeHandlers, ...lookupHandlers, ...locationHandlers, ...userHandlers);
 
 /** Controls for automated tests (Playwright `page.evaluate`). Exists only while mocks run. */
 export interface MockApiControls {
