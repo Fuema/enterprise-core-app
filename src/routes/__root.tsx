@@ -9,10 +9,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
    * Layout state recovery: entering a path WITHOUT search params (breadcrumb,
    * menu link, "back to list") restores the last page/sort/filter the user
    * had there. Recording happens in lib/router.ts (onResolved).
+   * Same-path navigations never restore: clearing the last filter or the row
+   * selection leaves an empty URL on purpose.
    */
   beforeLoad: ({ location }) => {
     if (Object.keys(location.search).length > 0) return;
-    const remembered = searchMemory.recall(location.pathname);
+    const remembered = searchMemory.recallOnEnter(location.pathname);
     if (remembered) {
       // Runtime path + search captured from a previous resolved location.
       throw redirect({ to: location.pathname as '/', search: remembered as never, replace: true });

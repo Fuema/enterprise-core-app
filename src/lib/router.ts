@@ -26,6 +26,7 @@ export const router = createRouter({
 // Search-state memory: record the last search params of every resolved route.
 // Restoration happens in the root route's `beforeLoad` (see routes/__root.tsx).
 router.subscribe('onResolved', ({ toLocation }) => {
+  searchMemory.visit(toLocation.pathname);
   const leaf = router.state.matches.at(-1);
   if (leaf?.staticData.persistSearch === false) return;
   searchMemory.remember(toLocation.pathname, toLocation.search);

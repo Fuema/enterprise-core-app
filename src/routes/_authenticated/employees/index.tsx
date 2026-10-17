@@ -4,11 +4,13 @@ import { Plus, RotateCcw } from 'lucide-react';
 import { useMemo } from 'react';
 import { GenericActionGuard } from '@/components/shared/GenericActionGuard';
 import { GenericDataTable } from '@/components/shared/GenericDataTable';
+import { LookupSelect } from '@/components/shared/LookupSelect';
 import { Button } from '@/components/ui/Button';
 import { NativeSelect } from '@/components/ui/NativeSelect';
+import { BulkDeleteEmployeesButton } from '@/features/employees/components/BulkDeleteEmployeesButton';
 import { employeeColumns } from '@/features/employees/components/employeeColumns';
-import { employeeQueries } from '@/features/employees/services/employeeService';
-import { EMPLOYEE_DEPARTMENTS, EMPLOYEE_PERMISSIONS, type Employee } from '@/features/employees/types/employee';
+import { employeeQueries, locationQueries } from '@/features/employees/services/employeeService';
+import { EMPLOYEE_GENDERS, EMPLOYEE_PERMISSIONS, type Employee } from '@/features/employees/types/employee';
 import {
   employeeSearchDefaults,
   employeeSearchSchema,
@@ -17,6 +19,7 @@ import {
 } from '@/features/employees/types/employeeSearch';
 import { useTableSearchNavigation } from '@/hooks/useTableSearchNavigation';
 import { searchMemory } from '@/lib/searchMemory';
+import { parseSelected } from '@/lib/tableSearch';
 
 /** Stable empty fallback: a new `[]` per render would invalidate the table's row model. */
 const EMPTY_ROWS: Employee[] = [];
@@ -39,6 +42,8 @@ function EmployeesPage() {
 
   const filter = useMemo(() => toEmployeeFilter(search), [search]);
   const query = useQuery({ ...employeeQueries.list(filter), placeholderData: keepPreviousData });
+  const countries = useQuery(locationQueries.countries());
+  const selectedIds = useMemo(() => parseSelected(search.selected).map(Number).filter(Number.isInteger), [search.selected]);
 
   const resetView = () => {
     // Explicit reset must also clear the remembered deep link.
@@ -73,20 +78,33 @@ function EmployeesPage() {
         enableRowSelection
         isLoading={query.isPending}
         isFetching={query.isFetching}
-        searchPlaceholder="Search name, email, title…"
+        searchPlaceholder="Search name, email, city…"
         onRowClick={(employee) => void navigate({ to: '/employees/$employeeId', params: { employeeId: employee.id } })}
         toolbar={
           <div className="flex items-center gap-2">
+            <BulkDeleteEmployeesButton ids={selectedIds} onDeleted={() => onSearchChange({ selected: undefined })} />
+            <LookupSelect
+              aria-label="Filter by country"
+              className="h-9 w-44"
+              items={countries.data}
+              isLoading={countries.isPending}
+              value={search.countryId}
+              placeholder="All countries"
+              onValueChange={(id) => onSearchChange({ countryId: id > 0 ? id : undefined, page: 1 })}
+            />
             <NativeSelect
-              aria-label="Filter by department"
-              className="h-9 w-48"
-              value={search.department ?? ''}
-              onChange={(event) => onSearchChange({ department: event.target.value || undefined, page: 1 })}
+              aria-label="Filter by gender"
+              className="h-9 w-36"
+              value={search.gender ?? ''}
+              onChange={(event) => {
+                const gender = EMPLOYEE_GENDERS.find((value) => value === event.target.value);
+                onSearchChange({ gender, page: 1 });
+              }}
             >
-              <option value="">All departments</option>
-              {EMPLOYEE_DEPARTMENTS.map((department) => (
-                <option key={department} value={department}>
-                  {department}
+              <option value="">All genders</option>
+              {EMPLOYEE_GENDERS.map((gender) => (
+                <option key={gender} value={gender}>
+                  {gender}
                 </option>
               ))}
             </NativeSelect>

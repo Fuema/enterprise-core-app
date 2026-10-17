@@ -1,7 +1,7 @@
 import { delay, http } from 'msw';
 import { env } from '@/lib/env';
 import { hasPermissions } from '@/lib/permissions';
-import { users, type MockUser } from '../db';
+import { SIGNUP_DEFAULTS, nextId, users, type MockUser } from '../db';
 import { api, noContent, ok, problem, readBody } from '../http';
 
 /**
@@ -82,6 +82,36 @@ export function authorize(request: Request, required: readonly string[] = []): M
   return user;
 }
 
+interface RegisterBody {
+  username?: unknown;
+  displayName?: unknown;
+  email?: unknown;
+  password?: unknown;
+  confirmPassword?: unknown;
+}
+
+const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+/** Same rules and messages as RegisterRequest + AuthEndpoints.Register in the API. */
+function registerErrors(body: RegisterBody | undefined): Record<string, string[]> {
+  const errors: Record<string, string[]> = {};
+  const username = text(body?.username);
+  const email = text(body?.email);
+  const password = typeof body?.password === 'string' ? body.password : '';
+  if (username.length < 3 || username.length > 64) errors.username = ['Use 3 to 64 characters'];
+  else if (!/^[A-Za-z0-9._-]+$/.test(username)) errors.username = ['Use letters, digits, dots, dashes or underscores'];
+  else if (users.some((u) => u.username.toLowerCase() === username.toLowerCase())) errors.username = ['This username is already taken'];
+  if (!text(body?.displayName)) errors.displayName = ['Full name is required'];
+  if (!/^[^@\s]+@[^@\s]+$/.test(email)) errors.email = ['Enter a valid email address'];
+  else if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) errors.email = ['An account with this email already exists'];
+  if (password.length < 8) errors.password = ['Use at least 8 characters'];
+  else if (!(/[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password))) {
+    errors.password = ['Include an uppercase letter, a lowercase letter and a digit'];
+  }
+  if (body?.confirmPassword !== password) errors.confirmPassword = ['Passwords do not match'];
+  return errors;
+}
+
 interface LoginBody {
   username?: unknown;
   password?: unknown;
@@ -96,6 +126,26 @@ export const authHandlers = [
     stats.loginCount += 1;
     setRefreshSession(user.id);
     return ok({ accessToken: issueAccessToken(user), user: toUserDto(user) });
+  }),
+
+  http.post(api(env.VITE_AUTH_REGISTER_PATH), async ({ request }) => {
+    await delay(400);
+    const body = (await readBody(request)) as RegisterBody | undefined;
+    const errors = registerErrors(body);
+    if (Object.keys(errors).length > 0) return problem(400, 'One or more validation errors occurred.', errors);
+    const user: MockUser = {
+      id: nextId(users),
+      username: text(body?.username),
+      password: String(body?.password),
+      displayName: text(body?.displayName),
+      email: text(body?.email),
+      roles: [...SIGNUP_DEFAULTS.roles],
+      permissions: [...SIGNUP_DEFAULTS.permissions],
+    };
+    users.push(user);
+    stats.loginCount += 1;
+    setRefreshSession(user.id);
+    return ok({ accessToken: issueAccessToken(user), user: toUserDto(user) }, 201);
   }),
 
   http.post(api(env.VITE_AUTH_REFRESH_PATH), async () => {

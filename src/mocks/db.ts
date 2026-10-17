@@ -14,18 +14,41 @@ export interface MockUser {
   permissions: string[];
 }
 
+/** Same shape as EmployeeResponse in the .NET API. */
 export interface MockEmployee {
   id: number;
   firstName: string;
   lastName: string;
+  dateOfBirth: string;
   email: string;
-  department: string;
-  jobTitle: string;
-  hireDate: string;
-  isActive: boolean;
+  gender: 'Male' | 'Female';
+  countryId: number;
+  stateId: number;
+  cityId: number;
+  address: string;
+  pincode: string;
+  countryName: string;
+  stateName: string;
+  cityName: string;
 }
 
-/** Demo accounts: username / password are identical. */
+export interface MockCountry {
+  id: number;
+  name: string;
+}
+export interface MockState {
+  id: number;
+  name: string;
+  countryId: number;
+}
+export interface MockCity {
+  id: number;
+  name: string;
+  stateId: number;
+  countryId: number;
+}
+
+/** Demo accounts: username / password are identical. Signup appends to this list (until reload). */
 export const users: MockUser[] = [
   {
     id: 1,
@@ -43,7 +66,8 @@ export const users: MockUser[] = [
     displayName: 'Max Manager',
     email: 'manager@example.test',
     roles: ['HR Manager'],
-    permissions: ['employees:read', 'employees:write'],
+    // Edits employees and cities; only looks at countries and states (same as the API's seeded manager).
+    permissions: ['employees:read', 'employees:write', 'countries:read', 'states:read', 'cities:read', 'cities:write'],
   },
   {
     id: 3,
@@ -70,16 +94,59 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+export const countries: MockCountry[] = [
+  { id: 1, name: 'India' },
+  { id: 2, name: 'United States' },
+  { id: 3, name: 'Canada' },
+];
+
+export const states: MockState[] = [
+  { id: 1, name: 'Maharashtra', countryId: 1 },
+  { id: 2, name: 'Karnataka', countryId: 1 },
+  { id: 3, name: 'Tamil Nadu', countryId: 1 },
+  { id: 4, name: 'California', countryId: 2 },
+  { id: 5, name: 'Texas', countryId: 2 },
+  { id: 6, name: 'Ontario', countryId: 3 },
+  { id: 7, name: 'British Columbia', countryId: 3 },
+];
+
+export const cities: MockCity[] = [
+  { id: 1, name: 'Mumbai', stateId: 1, countryId: 1 },
+  { id: 2, name: 'Pune', stateId: 1, countryId: 1 },
+  { id: 3, name: 'Bengaluru', stateId: 2, countryId: 1 },
+  { id: 4, name: 'Mysuru', stateId: 2, countryId: 1 },
+  { id: 5, name: 'Chennai', stateId: 3, countryId: 1 },
+  { id: 6, name: 'Coimbatore', stateId: 3, countryId: 1 },
+  { id: 7, name: 'Los Angeles', stateId: 4, countryId: 2 },
+  { id: 8, name: 'San Francisco', stateId: 4, countryId: 2 },
+  { id: 9, name: 'Austin', stateId: 5, countryId: 2 },
+  { id: 10, name: 'Houston', stateId: 5, countryId: 2 },
+  { id: 11, name: 'Toronto', stateId: 6, countryId: 3 },
+  { id: 12, name: 'Ottawa', stateId: 6, countryId: 3 },
+  { id: 13, name: 'Vancouver', stateId: 7, countryId: 3 },
+  { id: 14, name: 'Victoria', stateId: 7, countryId: 3 },
+];
+
+/** Self-service signup defaults (API: Signup:DefaultRoles / Signup:DefaultPermissions). */
+export const SIGNUP_DEFAULTS = { roles: ['User'], permissions: ['employees:read'] } as const;
+
+export function nextId(rows: readonly { id: number }[]): number {
+  return rows.reduce((max, row) => Math.max(max, row.id), 0) + 1;
+}
+
+/** Lookup names for a location (empty strings when a reference is broken, like the API's LEFT JOINs). */
+export function locationNames(countryId: number, stateId: number, cityId: number) {
+  return {
+    countryName: countries.find((c) => c.id === countryId)?.name ?? '',
+    stateName: states.find((s) => s.id === stateId)?.name ?? '',
+    cityName: cities.find((c) => c.id === cityId)?.name ?? '',
+  };
+}
+
 const FIRST = ['Ana', 'Ben', 'Carla', 'Diego', 'Elena', 'Frank', 'Grace', 'Hugo', 'Iris', 'Jorge', 'Kara', 'Liam', 'Maya', 'Noah', 'Olga', 'Pablo', 'Rosa', 'Sam', 'Tara', 'Victor'];
 const LAST = ['Alvarez', 'Brooks', 'Castillo', 'Dunn', 'Ellis', 'Fuentes', 'Garcia', 'Hayes', 'Ibarra', 'Jensen', 'Kim', 'Lopez', 'Moreno', 'Nash', 'Ortiz', 'Patel', 'Reyes', 'Silva', 'Torres', 'Vega'];
-const DEPARTMENTS: Record<string, string[]> = {
-  Engineering: ['Software Engineer', 'Senior Engineer', 'QA Analyst', 'DevOps Engineer'],
-  'Human Resources': ['HR Generalist', 'Recruiter', 'Benefits Specialist'],
-  Payroll: ['Payroll Specialist', 'Payroll Manager'],
-  Finance: ['Accountant', 'Financial Analyst'],
-  Sales: ['Account Executive', 'Sales Manager'],
-};
-const DEPARTMENT_NAMES = Object.keys(DEPARTMENTS);
+const FEMALE = new Set(['Ana', 'Carla', 'Elena', 'Grace', 'Iris', 'Kara', 'Maya', 'Olga', 'Rosa', 'Tara']);
+const STREETS = ['MG Road', 'Main Street', 'Park Avenue', 'Lake View', 'Station Road', 'Hill Crest', 'Market Lane'];
 
 function pick<T>(random: () => number, items: readonly T[]): T {
   const item = items[Math.floor(random() * items.length)];
@@ -93,17 +160,21 @@ function seedEmployees(count: number): MockEmployee[] {
   for (let id = 1; id <= count; id += 1) {
     const firstName = pick(random, FIRST);
     const lastName = pick(random, LAST);
-    const department = pick(random, DEPARTMENT_NAMES);
-    const hire = new Date(Date.UTC(2012 + Math.floor(random() * 14), Math.floor(random() * 12), 1 + Math.floor(random() * 28)));
+    const city = pick(random, cities);
+    const born = new Date(Date.UTC(1965 + Math.floor(random() * 38), Math.floor(random() * 12), 1 + Math.floor(random() * 28)));
     result.push({
       id,
       firstName,
       lastName,
+      dateOfBirth: born.toISOString().slice(0, 10),
       email: `${firstName}.${lastName}${String(id)}@example.test`.toLowerCase(),
-      department,
-      jobTitle: pick(random, DEPARTMENTS[department] ?? ['Associate']),
-      hireDate: hire.toISOString().slice(0, 10),
-      isActive: random() > 0.12,
+      gender: FEMALE.has(firstName) ? 'Female' : 'Male',
+      countryId: city.countryId,
+      stateId: city.stateId,
+      cityId: city.id,
+      address: `${String(1 + Math.floor(random() * 250))} ${pick(random, STREETS)}`,
+      pincode: String(100000 + Math.floor(random() * 900000)),
+      ...locationNames(city.countryId, city.stateId, city.id),
     });
   }
   return result;
@@ -114,5 +185,3 @@ export const employees: MockEmployee[] = seedEmployees(137);
 export function nextEmployeeId(): number {
   return employees.reduce((max, e) => Math.max(max, e.id), 0) + 1;
 }
-
-export const departments: readonly string[] = DEPARTMENT_NAMES;

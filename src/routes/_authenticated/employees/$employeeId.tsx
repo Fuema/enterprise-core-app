@@ -2,13 +2,12 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { GenericActionGuard } from '@/components/shared/GenericActionGuard';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { DeleteEmployeeButton } from '@/features/employees/components/DeleteEmployeeButton';
 import { EmployeeForm } from '@/features/employees/forms/EmployeeForm';
 import { toEmployeeFormValues } from '@/features/employees/forms/employeeFormSchema';
 import { employeeQueries, employeeService } from '@/features/employees/services/employeeService';
-import { EMPLOYEE_PERMISSIONS, employeeFullName, employeeSchema } from '@/features/employees/types/employee';
+import { EMPLOYEE_PERMISSIONS, employeeFullName, employeeLocation, employeeSchema } from '@/features/employees/types/employee';
 import { useUpdateEntity } from '@/hooks/useEntityMutations';
 import { ApiError } from '@/lib/apiError';
 
@@ -51,9 +50,11 @@ function EmployeeDetailPage() {
       {(
         [
           ['Email', employee.email],
-          ['Department', employee.department],
-          ['Job title', employee.jobTitle],
-          ['Hire date', employee.hireDate],
+          ['Gender', employee.gender],
+          ['Date of birth', employee.dateOfBirth],
+          ['Pincode', employee.pincode],
+          ['Address', employee.address],
+          ['Location', employeeLocation(employee)],
         ] as const
       ).map(([label, value]) => (
         <div key={label}>
@@ -69,7 +70,6 @@ function EmployeeDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{employeeFullName(employee)}</h1>
-          {employee.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>}
         </div>
         <Button variant="ghost" asChild>
           {/* No search params on purpose: the router restores the list's last page/sort/filter. */}

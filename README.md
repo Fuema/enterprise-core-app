@@ -36,6 +36,19 @@ Demo users: `admin/admin` (everything), `manager/manager` (read + write), `viewe
 Access tokens expire after 60 seconds, so the silent refresh is exercised while you click around.
 The mock is never included in production builds.
 
+## Real backend (.NET 10 + SQL Server)
+The reference API lives in `enterprise-core-app-claude-server` (see its `README.md`):
+```powershell
+cd ..\enterprise-core-app-claude-server
+dotnet run --launch-profile http     # http://localhost:7077, seeds admin/manager/viewer in Development
+```
+Then create `.env.development.local` here with:
+```
+VITE_API_BASE_URL=http://localhost:7077/api
+VITE_ENABLE_MOCKS=false
+```
+and restart `npm run dev`. Delete the file (or set `VITE_ENABLE_MOCKS=true`) to go back to the mock.
+
 ## Scripts
 | Script | What it does |
 |--------|--------------|

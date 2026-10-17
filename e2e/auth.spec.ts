@@ -45,13 +45,21 @@ test.describe('authentication', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('permission guard: viewer sees a disabled admin action, admin an enabled one', async ({ page }) => {
+  test('dashboard and navigation follow each feature\'s permissions', async ({ page }) => {
     await loginAs(page, 'viewer');
-    await expect(page.getByRole('button', { name: 'Admin action' })).toBeDisabled();
+    const nav = page.getByRole('navigation', { name: 'Main' });
+    await expect(nav.getByRole('link', { name: 'Employees' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Countries' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Employees: \d+ records$/ })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Employees Create / edit: not allowed' })).toBeVisible();
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/login/); // wait for logout to complete before the next sign-in
 
     await loginAs(page, 'admin');
-    await expect(page.getByRole('button', { name: 'Admin action' })).toBeEnabled();
+    for (const feature of ['Employees', 'Countries', 'States', 'Cities']) {
+      await expect(nav.getByRole('link', { name: feature })).toBeVisible();
+      await expect(page.getByRole('cell', { name: `${feature} Delete: allowed` })).toBeVisible();
+    }
+    await expect(page.getByRole('link', { name: 'Countries: 3 records' })).toBeVisible();
   });
 });

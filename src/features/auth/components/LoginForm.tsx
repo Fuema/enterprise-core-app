@@ -12,6 +12,9 @@ export function LoginForm({ onSuccess }: { onSuccess: (user: AuthUser) => void |
     <GenericFormElement
       schema={loginSchema}
       defaultValues={{ username: '', password: '' }}
+      // Validate on submit only: leaving the auto-focused, still-empty username to click
+      // "Create an account" must not show errors (and must not shift the link mid-click).
+      mode="onSubmit"
       onSubmit={async (credentials) => {
         const user = await loginMutation.mutateAsync(credentials);
         await onSuccess(user);

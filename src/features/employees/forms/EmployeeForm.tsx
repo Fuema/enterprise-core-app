@@ -3,7 +3,8 @@ import { FormRootError, FormSubmitButton, GenericFormElement } from '@/component
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/Form';
 import { Input } from '@/components/ui/Input';
 import { NativeSelect } from '@/components/ui/NativeSelect';
-import { EMPLOYEE_DEPARTMENTS } from '../types/employee';
+import { EMPLOYEE_GENDERS } from '../types/employee';
+import { EmployeeLocationFields } from './EmployeeLocationFields';
 import { employeeFormSchema, type EmployeeFormValues } from './employeeFormSchema';
 
 interface EmployeeFormProps {
@@ -51,47 +52,66 @@ export function EmployeeForm({ defaultValues, onSubmit, submitLabel, actions, di
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input type="email" autoComplete="off" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
-              name="department"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Department</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <NativeSelect {...field}>
-                      <option value="">Select…</option>
-                      {EMPLOYEE_DEPARTMENTS.map((department) => (
-                        <option key={department} value={department}>
-                          {department}
-                        </option>
-                      ))}
-                    </NativeSelect>
+                    <Input type="email" autoComplete="off" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="dateOfBirth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date of birth</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <FormControl>
+                      <NativeSelect {...field}>
+                        <option value="">Select…</option>
+                        {EMPLOYEE_GENDERS.map((gender) => (
+                          <option key={gender} value={gender}>
+                            {gender}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          <EmployeeLocationFields />
+
+          <div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
             <FormField
               control={form.control}
-              name="jobTitle"
+              name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Job title</FormLabel>
+                  <FormLabel>Address</FormLabel>
                   <FormControl>
                     <Input autoComplete="off" {...field} />
                   </FormControl>
@@ -99,39 +119,15 @@ export function EmployeeForm({ defaultValues, onSubmit, submitLabel, actions, di
                 </FormItem>
               )}
             />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
-              name="hireDate"
+              name="pincode"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Hire date</FormLabel>
+                  <FormLabel>Pincode</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input inputMode="numeric" maxLength={6} autoComplete="off" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field: { value, onChange, ...field } }) => (
-                <FormItem className="content-end">
-                  <div className="flex h-9 items-center gap-2">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-primary"
-                        checked={value}
-                        onChange={(event) => onChange(event.target.checked)}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormLabel>Active</FormLabel>
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}

@@ -13,6 +13,14 @@ export type SearchRecord = Record<string, unknown>;
 export interface SearchMemory {
   remember: (pathname: string, search: SearchRecord) => void;
   recall: (pathname: string) => SearchRecord | undefined;
+  /** Records the path the user is currently on (called for every resolved navigation). */
+  visit: (pathname: string) => void;
+  /**
+   * Remembered search for a path the user is ENTERING from another path.
+   * Navigations within the same path (clearing the last filter or the row
+   * selection) return undefined: the user removed that state on purpose.
+   */
+  recallOnEnter: (pathname: string) => SearchRecord | undefined;
   forget: (pathname: string) => void;
   clear: () => void;
 }
@@ -20,6 +28,7 @@ export interface SearchMemory {
 export function createSearchMemory(limit = 50): SearchMemory {
   const entries = new Map<string, SearchRecord>();
   const normalize = (pathname: string) => (pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname);
+  let currentPath: string | undefined;
 
   return {
     remember(pathname, search) {
@@ -38,11 +47,21 @@ export function createSearchMemory(limit = 50): SearchMemory {
       const value = entries.get(normalize(pathname));
       return value ? { ...value } : undefined;
     },
+    visit(pathname) {
+      currentPath = normalize(pathname);
+    },
+    recallOnEnter(pathname) {
+      const key = normalize(pathname);
+      if (key === currentPath) return undefined;
+      const value = entries.get(key);
+      return value ? { ...value } : undefined;
+    },
     forget(pathname) {
       entries.delete(normalize(pathname));
     },
     clear() {
       entries.clear();
+      currentPath = undefined;
     },
   };
 }

@@ -3,6 +3,7 @@ import { env } from '@/lib/env';
 import { queryClient } from '@/lib/queryClient';
 import { searchMemory } from '@/lib/searchMemory';
 import type { LoginRequest } from '../schemas/loginSchema';
+import type { SignupRequest } from '../schemas/signupSchema';
 import { useAuthStore } from '../store/authStore';
 import { authUserSchema, loginResponseSchema, type AuthUser } from '../types/auth';
 
@@ -12,14 +13,29 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   return authUserSchema.parse(unwrapEnvelope(response.data));
 }
 
-/** Credential login. The server sets the httpOnly refresh cookie on success. */
-export async function login(credentials: LoginRequest): Promise<AuthUser> {
-  const response = await apiClient.post<unknown>(env.VITE_AUTH_LOGIN_PATH, credentials, { skipAuthRefresh: true });
-  const { accessToken, user } = loginResponseSchema.parse(unwrapEnvelope(response.data));
+/** Stores the tokens of a login/register response and resolves the principal. */
+async function startSession(body: unknown): Promise<AuthUser> {
+  const { accessToken, user } = loginResponseSchema.parse(unwrapEnvelope(body));
   useAuthStore.getState().setAccessToken(accessToken);
   const principal = user ?? (await fetchCurrentUser());
   useAuthStore.getState().setSession(principal, accessToken);
   return principal;
+}
+
+/** Credential login. The server sets the httpOnly refresh cookie on success. */
+export async function login(credentials: LoginRequest): Promise<AuthUser> {
+  const response = await apiClient.post<unknown>(env.VITE_AUTH_LOGIN_PATH, credentials, { skipAuthRefresh: true });
+  return startSession(response.data);
+}
+
+/**
+ * Self-service signup. The server creates a least-privilege account, sets the
+ * refresh cookie and answers like a login, so the user is signed in at once.
+ * Field errors (username taken, weak password...) arrive as ProblemDetails.
+ */
+export async function register(payload: SignupRequest): Promise<AuthUser> {
+  const response = await apiClient.post<unknown>(env.VITE_AUTH_REGISTER_PATH, payload, { skipAuthRefresh: true });
+  return startSession(response.data);
 }
 
 /** Ends the session server-side (clears cookie) and wipes every client cache. */

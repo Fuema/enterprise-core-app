@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router';
-import { Badge } from '@/components/ui/Badge';
 import { dataTableColumnHelper } from '@/lib/dataTable';
-import { employeeFullName, type Employee } from '../types/employee';
+import { employeeFullName, employeeLocation, type Employee } from '../types/employee';
 import { DeleteEmployeeButton } from './DeleteEmployeeButton';
 
 const col = dataTableColumnHelper<Employee>();
@@ -27,17 +26,16 @@ export const employeeColumns = col.columns([
     ),
   }),
   col.accessor('email', { header: 'Email' }),
-  col.accessor('department', { header: 'Department' }),
-  col.accessor('jobTitle', { header: 'Job title' }),
-  col.accessor('hireDate', {
-    header: 'Hired',
+  col.accessor('gender', { header: 'Gender' }),
+  col.accessor('dateOfBirth', {
+    header: 'Born',
     cell: ({ getValue }) => dateFormat.format(new Date(getValue())),
   }),
-  col.accessor('isActive', {
-    header: 'Status',
-    cell: ({ getValue }) =>
-      getValue() ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>,
+  col.accessor('cityName', {
+    header: 'Location',
+    cell: ({ row }) => employeeLocation(row.original),
   }),
+  col.accessor('pincode', { header: 'Pincode' }),
   col.display({
     id: 'actions',
     header: () => <span className="sr-only">Actions</span>,

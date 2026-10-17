@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
 import { z } from 'zod';
 import { isAuthenticated, LoginForm } from '@/features/auth';
 import { env } from '@/lib/env';
@@ -36,6 +36,14 @@ function LoginPage() {
           <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </div>
         <LoginForm onSuccess={handleSuccess} />
+        {env.VITE_AUTH_SIGNUP_ENABLED && (
+          <p className="text-center text-sm text-muted-foreground">
+            New here?{' '}
+            <Link to="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
+              Create an account
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );

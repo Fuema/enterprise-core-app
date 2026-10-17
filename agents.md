@@ -11,6 +11,8 @@ Create a highly scalable, production-ready, and **100% type-safe frontend core t
 | 2b | Dev mock backend (MSW) | ✅ Validated 2026-10-17 (login, permissions, session restore) |
 | 3 | Concrete feature: Employees (reference implementation) | ✅ Validated 2026-10-17 (typecheck, lint, full browser checklist) |
 | 4 | Automated acceptance: Playwright e2e (17 tests) + `setup.ps1` | ✅ 17/17 passing 2026-10-17 |
+| 5 | Real backend (.NET 10 + SQL Server, `enterprise-core-app-claude-server`) + Employees on the real domain (DOB, gender, country/state/city cascade, address, pincode, bulk delete) | ✅ Owner-validated 2026-10-17 against the real SQL Server DB (`VITE_ENABLE_MOCKS=false`) |
+| 6 | Signup, Countries / States / Cities CRUD with per-feature permissions, registry-driven navigation + dashboard; e2e 29 tests | ✅ Validated 2026-10-17: owner browser check against the real SQL Server DB (admin creates countries, manager reads countries, viewer only reads employees) + `npm run verify:all` (43 unit, e2e 29/29) |
 
 Next feature? Follow **🧭 Feature Development Procedure** below and log the work in **📝 Change Log**.
 
@@ -79,6 +81,7 @@ Adding a variable = add it to `env.schema.ts`, `vite-env.d.ts`, `.env.example` a
 ## 🔌 Backend Contract (expected by the generic core)
 | Concern | Contract |
 |---------|----------|
+| Signup | `POST {REGISTER_PATH}` `{ username, displayName, email, password, confirmPassword }` → 201 `{ accessToken, user }` + refresh cookie (least-privilege scopes); field errors as ValidationProblem |
 | Login | `POST {LOGIN_PATH}` `{ username, password }` → `{ accessToken, user? }`; sets httpOnly refresh cookie |
 | Refresh | `POST {REFRESH_PATH}` (cookie) → `{ accessToken }` |
 | Me | `GET {ME_PATH}` → `{ id, displayName, email?, roles[], permissions[] }` |
@@ -88,15 +91,36 @@ Adding a variable = add it to `env.schema.ts`, `vite-env.d.ts`, `.env.example` a
 | CORS | `AllowCredentials` + explicit origin (cookies are sent with `withCredentials`) |
 | Tenancy | Header `{VITE_TENANT_HEADER_NAME}`; hubs also receive `?tenant=` |
 
+| Update | `PUT /resource/{id}` → **200 + the saved entity** (written straight into the detail cache) |
+| Validation | 400 `ValidationProblem`; `errors` keys are **camelCase field names** (`email`, `cityId`), messages are user-facing |
+| Lookups | `GET /lookups/<lookup>` → `[{ id, name }]` ordered by name, readable by any signed-in user (generic `lookupQueries` + `<LookupSelect>`); managing the same data is a separate, permission-protected resource (`/countries`...) |
+| In use | Deleting a row still referenced → **409** ProblemDetails with a human `detail` (shown next to the delete button) |
+| Bulk actions | `POST /resource/bulk-delete` `{ ids }` → `{ deletedCount }` |
+| Permissions | Access token carries `permission` claims; every endpoint enforces the same scopes as the UI (wildcards `res:*`, `*`) |
+
 Different backend? Override `BaseApiService.toQueryParams()` / `toPaginated()` / `parseEntity()`; never fork the generic layer.
+
+### Reference Backend (`C:\Users\fuema\source\repos\enterprise-core-app-claude-server`)
+ASP.NET Core 10 minimal API + EF Core 10 + SQL Server (`AngularCrudApi`). Implements every row above; its `README.md` is the backend's manual (run, endpoints, "Adding a resource").
+*   **Run:** `dotnet run --launch-profile http` → `http://localhost:7077` (Swagger `/swagger`, sample requests `AngularCrudApi.http`). Development startup applies `Database/Scripts/*.sql` (idempotent: `AppUsers`, `RefreshTokens`, unique index on `tblEmployeeMaster.EmailId`) and seeds `admin`/`manager`/`viewer` (password = username) when `AppUsers` is empty.
+*   **Frontend against it:** create `.env.development.local` (owner, not committed) with `VITE_API_BASE_URL=http://localhost:7077/api` and `VITE_ENABLE_MOCKS=false`. The e2e suite keeps using the mock (its env is fixed in `e2e/e2e.env.ts`).
+*   **Auth:** `Auth/` — HS256 JWT (15 min, claims `sub`, `name`, `email`, `role`, `permission`), refresh token = random 384-bit value stored as SHA-256 in `RefreshTokens`, single-use with rotation and reuse detection, cookie `ec_refresh` (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/auth`). Login is rate-limited (10/min/IP). `Jwt:SigningKey` comes from `dotnet user-secrets` / `Jwt__SigningKey`; Development falls back to an ephemeral key; other environments fail fast without one.
+*   **Policies:** one per scope in `Auth/Permissions.cs` (`Permissions.All`); groups use `.RequireAuthorization(Permissions.EmployeesRead)` and endpoints add write/delete. Scopes must equal the frontend `*_PERMISSIONS` constants. Current scopes: `employees`, `countries`, `states`, `cities` × `read|write|delete`.
+*   **Signup:** `POST /api/auth/register` (rate-limited like login). `Signup` config section: `Enabled`, `DefaultRoles` (`User`), `DefaultPermissions` (`employees:read`). Granting more access = update `dbo.AppUsers.Permissions` (no user-admin UI yet).
+*   **Locations:** `Endpoint/CountryEndpoints.cs`, `StateEndpoints.cs`, `CityEndpoints.cs` (paged CRUD with usage counts, unique names per parent, 409 while in use, no re-parenting while children/employees exist; a city's country is copied from its state); `LookupEndpoints.cs` serves `/api/lookups/*` for dropdowns. Demo manager = employees read/write, countries + states read, cities read/write (script `002` upgrades an older seed).
+*   **Generic building blocks** (`Infrastructure/`): `PageRequest` (`[AsParameters]`, page size clamped 1–100) + `ToPagedAsync()` → `PagedResponse<T>`; `SortMap<T>` (allow-listed `field.asc,field.desc`, default sort, never SQL from input); `.WithValidation<TRequest>()` (DataAnnotations → camelCase `ValidationProblem`; minimal APIs do not run DataAnnotations on their own).
+*   **Rules:** response DTOs are classes with `init` properties (positional records stop EF from composing `Where/OrderBy` on the projection); cross-field rules return `Results.ValidationProblem` keyed by field; unique-index violations (SQL 2601/2627) map to the field; schema changes are new idempotent `Database/Scripts/00N_*.sql` files (the DB is database-first, no EF migrations).
+*   `_original/` keeps the pre-adaptation files (`*.bak`, not compiled) and the transfer bundles; safe to delete once the API is validated. The folder is not yet a git repository.
 
 ### Mock Backend (`src/mocks/`, MSW)
 *   Enabled only when `vite dev` runs with `VITE_ENABLE_MOCKS=true`; loaded through a dynamic import in `main.tsx`, so it never reaches production bundles. Requires `public/mockServiceWorker.js` (`npx msw init public --save`).
 *   Implements the contract above **through the real network layer**: responses honour `VITE_API_PROPERTY_CASING` and `VITE_API_RESPONSE_ENVELOPE`; errors are ProblemDetails; access tokens expire after 60 s to exercise silent refresh; the refresh "cookie" is simulated in `sessionStorage`.
-*   Demo users: `admin/admin` (`*`), `manager/manager` (`employees:read`, `employees:write`), `viewer/viewer` (`employees:read`).
-*   Resources: `/employees` (137 seeded rows; paging, multi-sort, search, `department` filter, create/update validation with field errors, duplicate-email check, permission-gated delete).
+*   Demo users: `admin/admin` (`*`), `manager/manager` (`employees:read|write`, `countries:read`, `states:read`, `cities:read|write`), `viewer/viewer` (`employees:read`). Signup adds accounts with `employees:read` until the next page reload.
+*   **A full page load reseeds the mock DB** (and forgets signed-up accounts): e2e tests that create data and then use it must navigate client-side (click links), never `page.goto`.
+*   Resources: `/employees` (137 seeded rows; paging, multi-sort, multi-term search incl. city/state/country, `countryId` + `gender` filters, validation with the API's messages, location-consistency + duplicate-email rules, permission-gated delete and `bulk-delete`) and the location lookups `/countries`, `/countries/:id/states`, `/states/:id/cities`. Handlers mirror the .NET endpoints one-to-one; when the API changes, change the mock in the same commit.
 *   Test hooks on `window.__mockApi` (present only while mocks run): `expireAccessTokens()` forces the silent-refresh path, `stats()` returns `{ loginCount, refreshCount }`. Used by the e2e suite; never referenced by app code.
 *   Logout invalidates the refresh session immediately (before the simulated latency), like a real server.
+*   Shared list behaviour for new mock resources: `src/mocks/paging.ts` (`listPage(rows, url, { sortable, searchable, defaultSort })`, same rules as the API's `PageRequest`/`SortMap`).
 *   Rule: every new feature resource gets a handler file in `src/mocks/handlers/` registered in `src/mocks/browser.ts`. Mock DTOs live in `src/mocks/db.ts` and must NOT import feature types (the mock plays the backend).
 
 ---
@@ -133,6 +157,8 @@ src/
 │   │   ├── GenericFormElement.tsx    # Unified form orchestrator (+ FormRootError, FormSubmitButton)
 │   │   ├── GenericErrorBoundary.tsx  # Abstract fallback capturing runtime and server faults (+ RouteErrorComponent)
 │   │   ├── GenericRouteGuard.tsx     # Reusable identity permission gateway (subtree)
+│   │   ├── LookupSelect.tsx          # Native select bound to a numeric id over [{ id, name }] lookups
+│   │   ├── GenericDeleteButton.tsx   # Guarded delete with inline confirm + server error (any BaseApiService)
 │   │   ├── GenericActionGuard.tsx    # Component-level permissions gate for granular UI blocks
 │   │   └── DynamicBreadcrumbs.tsx    # Meta-driven navigation trail components
 │   └── ui/               # Generic Shadcn/UI primitives (Vetted/wrapped standard components)
@@ -145,19 +171,26 @@ src/
 │       └── Form.tsx      # Pre-wrapped React Hook Form accessible primitives
 ├── features/             # EXTENSION TIER
 │   ├── auth/             # Modular login/session framework
-│   │   ├── components/   # LoginForm
-│   │   ├── hooks/        # useLogin, useLogout
-│   │   ├── schemas/      # loginSchema (Zod)
-│   │   ├── services/     # authService (login, logout, restoreSession, fetchCurrentUser)
+│   │   ├── components/   # LoginForm, SignupForm
+│   │   ├── hooks/        # useLogin, useSignup, useLogout
+│   │   ├── schemas/      # loginSchema, signupSchema (Zod, mirrors RegisterRequest)
+│   │   ├── services/     # authService (login, register, logout, restoreSession, fetchCurrentUser)
 │   │   ├── store/        # Zustand auth store + permission selectors
 │   │   ├── types/        # AuthUser, response schemas
 │   │   ├── guards.ts     # requireAuthentication, requirePermissions (router beforeLoad)
 │   │   └── index.ts      # Public API + initializeAuth (registers the auth bridge)
-│   └── employees/        # STEP 3: REFERENCE FEATURE (copy this shape for new features)
-│       ├── components/   # employeeColumns.tsx (module-level columns), DeleteEmployeeButton.tsx (guarded action)
-│       ├── forms/        # employeeFormSchema.ts (Zod + defaults/mappers), EmployeeForm.tsx (GenericFormElement)
-│       ├── services/     # employeeService.ts (extends BaseApiService) + employeeQueries (entityQueries)
-│       └── types/        # employee.ts (entity schema, sortable fields, permissions), employeeSearch.ts (URL schema + filter mapper)
+│   ├── employees/        # STEP 3: REFERENCE FEATURE (copy this shape for new features)
+│   │   ├── components/   # employeeColumns.tsx (module-level columns), DeleteEmployeeButton.tsx, BulkDeleteEmployeesButton.tsx (guarded actions)
+│   │   ├── forms/        # employeeFormSchema.ts (Zod + defaults/mappers), EmployeeForm.tsx (GenericFormElement), EmployeeLocationFields.tsx (country→state→city cascade)
+│   │   ├── services/     # employeeService.ts (extends BaseApiService, + deleteMany) + employeeQueries (entityQueries) + locationQueries (re-export of locations/lookups)
+│   │   └── types/        # employee.ts (entity schema, sortable fields, permissions), employeeSearch.ts (URL schema + filter mapper)
+│   └── locations/        # Domain group: three sub-features with the employees shape + shared lookups
+│       ├── lookups.ts    # locationLookups (countries/states/cities dropdowns) — the ONLY file other features may import
+│       ├── countries/    # types (country, countrySearch), services (countryService + countryMutationOptions), forms, components
+│       ├── states/       # same shape; countryId filter + country select
+│       └── cities/       # same shape; countryId/stateId filters + country→state cascade (countryId is UI-only)
+├── app/
+│   └── featureRegistry.ts  # FEATURES: one entry per feature (label, route, icon, permissions, useCount) → header nav, dashboard cards, access matrix
 ├── hooks/                # Generic hooks
 │   ├── useEntityMutations.ts         # useCreateEntity / useUpdateEntity / useDeleteEntity
 │   ├── useHubConnection.ts           # Hub lifecycle + status (useSyncExternalStore)
@@ -183,16 +216,19 @@ src/
 ├── routes/               # File-based routes (TanStack Router)
 │   ├── __root.tsx        # Root: search-memory restore, error + not-found components
 │   ├── _authenticated.tsx            # Protected layout group (beforeLoad guard, 'Home' crumb, feature nav)
-│   ├── _authenticated/index.tsx      # Home
+│   ├── _authenticated/index.tsx      # Dashboard: feature cards with record counts + "Your access" matrix (from FEATURES)
 │   ├── _authenticated/employees.tsx  # Feature layout: 'Employees' crumb + read permission for all children
-│   ├── _authenticated/employees/index.tsx         # List (URL-driven table + department filter)
+│   ├── _authenticated/employees/index.tsx         # List (URL-driven table, country/gender filters, bulk delete)
 │   ├── _authenticated/employees/new.tsx           # Create (requires employees:write)
 │   ├── _authenticated/employees/$employeeId.tsx   # Detail/edit (typed numeric param, breadcrumb from loader data)
-│   ├── login.tsx
+│   ├── _authenticated/{countries,states,cities}.tsx + /{index,new,$<entity>Id}.tsx   # Same pattern as employees
+│   ├── login.tsx         # + "Create an account" link (VITE_AUTH_SIGNUP_ENABLED)
+│   ├── signup.tsx        # Public self-service registration → signed in → dashboard
 │   └── forbidden.tsx
 ├── services/             # STEP 2: GENERIC SERVICE LAYER
 │   ├── BaseApiService.ts # Abstract base class for HTTP actions with generic type contracts
 │   ├── entityQueries.ts  # queryOptions factories (list/detail) for any BaseApiService
+│   ├── lookupService.ts  # Generic [{ id, name }] lookups: lookupItemSchema, fetchLookup, lookupQueries.list(path, enabled)
 │   ├── StorageService.ts # Local browser memory / storage abstraction layer
 │   └── GenericHubService.ts # Abstract connection consumer for real-time WebSocket/SignalR events
 ├── types/                # STEP 2: GENERIC SYSTEM TYPE DEFINITIONS
@@ -256,21 +292,24 @@ A feature contains **configuration and domain code only**. Everything below inhe
 | Concern | File | Generic building block |
 |---------|------|------------------------|
 | Entity contract | `features/employees/types/employee.ts` | Zod `employeeSchema` → `Employee`; `EMPLOYEE_SORTABLE_FIELDS` (`satisfies SortableField<Employee>[]`); `EMPLOYEE_PERMISSIONS` |
-| URL contract | `features/employees/types/employeeSearch.ts` | `createTableSearchSchema(...).extend({ department })` + `toEmployeeFilter()` → `GenericTableFilter<Employee>` |
-| API access | `features/employees/services/employeeService.ts` | `class EmployeeService extends BaseApiService<Employee, number, EmployeeInput, EmployeeInput>`; `employeeQueries = entityQueries(service)` |
-| Form | `features/employees/forms/*` | Zod `employeeFormSchema` (`satisfies z.ZodType<EmployeeInput>`) + `<GenericFormElement>` with `FormField`/`NativeSelect`/checkbox |
+| URL contract | `features/employees/types/employeeSearch.ts` | `createTableSearchSchema(...).extend({ countryId, gender })` + `toEmployeeFilter()` → `GenericTableFilter<Employee>` |
+| API access | `features/employees/services/employeeService.ts` | `class EmployeeService extends BaseApiService<Employee, number, EmployeeInput, EmployeeInput>` (+ `deleteMany(ids)`); `employeeQueries = entityQueries(service)`; `locationQueries` over `lookupQueries` |
+| Form | `features/employees/forms/*` | Zod `employeeFormSchema` (`satisfies z.ZodType<EmployeeInput>`, same rules/messages as the API's `EmployeeRequest`) + `<GenericFormElement>`; `EmployeeLocationFields` = 3 × `<LookupSelect>` via `useFormContext`/`useWatch`, a parent change clears its children in the change handler (not an effect, so edit mode keeps saved values) |
 | Grid | `features/employees/components/employeeColumns.tsx` | `dataTableColumnHelper<Employee>()`, column ids = sortable fields |
-| Guarded action | `features/employees/components/DeleteEmployeeButton.tsx` | `<GenericActionGuard>` + `useDeleteEntity(service)`; inline two-step confirm |
+| Guarded action | `features/employees/components/DeleteEmployeeButton.tsx`, `BulkDeleteEmployeesButton.tsx` | `<GenericActionGuard>` + `useDeleteEntity(service)` / `useMutation(service.deleteMany)`; inline two-step confirm; bulk ids come from the table's URL `selected` param, cleared on success |
 | Routes | `routes/_authenticated/employees*.tsx` | layout (crumb + `requirePermissions`), list (`validateSearch`, `loaderDeps`, `loader`), new (`useCreateEntity`), detail (`params.parse`, `notFound`, crumb resolver, `useSuspenseQuery`, `useUpdateEntity`) |
 | Navigation | `routes/_authenticated.tsx`, `_authenticated/index.tsx` | guarded header link + home card |
-| Mock API | `mocks/handlers/employees.ts` | paging/sort/search/filter, ProblemDetails validation, duplicate email, permission checks |
+| Mock API | `mocks/handlers/employees.ts`, `mocks/handlers/lookups.ts` | mirrors the .NET endpoints: paging/sort/search/filters, ProblemDetails validation, location + duplicate-email rules, bulk delete, lookups, permission checks |
+| Real API | `enterprise-core-app-claude-server/Endpoint/EmployeeEndpoints.cs`, `LookupEndpoints.cs` | see 🔌 Reference Backend |
 
 **Behaviours to verify in the browser (mock users):**
 1. `viewer`: Employees link visible; no "New employee", no delete icons; detail page is read-only.
 2. `manager`: can create and edit; no delete icons (`employees:delete` missing).
 3. `admin`: everything, including delete (inline confirm).
-4. Sort a column, filter by department, search, go to page 3 → URL updates; open a row → click the **Employees** breadcrumb or **Back to list** → page/sort/filter are restored (search memory). **Reset** clears them.
+4. Sort a column, filter by country and gender, search (e.g. `pune`), go to page 3 → URL updates; open a row → click the **Employees** breadcrumb or **Back to list** → page/sort/filter are restored (search memory). **Reset** clears them.
 5. Create an employee with an email that already exists → the server error appears under **Email** (ProblemDetails mapping).
+5b. In the form, pick Country → State → City; changing the country clears State and City; editing an employee shows its saved location.
+5c. `admin`: tick two rows → **Delete selected (2)** → **Confirm delete 2** → rows disappear, selection cleared (`manager`/`viewer` never see the button).
 6. Leave the app idle > 60 s, then change page → Network tab shows `401` → `/auth/refresh` → retried request; no visible interruption.
 7. `/employees/999999` → "Employee not found"; `/employees/abc` → not found.
 
@@ -297,6 +336,7 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 - `export const <entity>Queries = entityQueries(<entity>Service)`. Override `toQueryParams`/`toPaginated`/`parseEntity` only for backend deviations.
 
 **4. Form** — `features/<entities>/forms/`
+- Foreign keys use `<LookupSelect>` with `lookupQueries.list(path, enabled)` (numeric id, `0` = none, schema `z.number().int().positive(msg)`). Cascades: watch the parent with `useWatch`, clear children inside the parent's change handler.
 - `<entity>FormSchema` (`satisfies z.ZodType<<Entity>Input>`), `empty<Entity>Form`, `to<Entity>FormValues(entity)`.
 - `<Entity>Form` = `<GenericFormElement>` + `FormField` blocks; `onSubmit` must `await` the mutation so `ApiError` field errors are mapped.
 
@@ -310,9 +350,13 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 - `<entities>/new.tsx`: `beforeLoad: requirePermissions([write])`, `persistSearch: false`, `useCreateEntity`.
 - `<entities>/$<entity>Id.tsx`: `params: { parse, stringify }` for non-string ids; loader → `ensureQueryData(detail)`, 404 → `throw notFound()`; breadcrumb resolver validates `loaderData` with the Zod schema; page uses `useSuspenseQuery(detail)`; edit form inside `<GenericActionGuard permissions={[write]} fallback={readOnlyView}>`.
 
-**7. Navigation** — add a guarded `<Link>` in `routes/_authenticated.tsx` (header) and, optionally, a card on the home page.
+**7. Navigation & dashboard** — add ONE entry to `FEATURES` in `src/app/featureRegistry.ts` (label, `to`, icon, `<ENTITY>_PERMISSIONS`, `useCount` via `<entity>Queries.list({ page: 1, pageSize: 1 })`). The header link, the dashboard card (with record count) and the "Your access" row are generated and guarded by the feature's read scope; never hand-write nav links.
 
 **8. Mock API** — `mocks/handlers/<entities>.ts` + register in `mocks/browser.ts`; DTOs and seed data in `mocks/db.ts` (no feature imports); use `authorize(request, [scope])`, `ok()`, `problem()`, `queryParam()`; add demo-user scopes if needed.
+
+**8a. Cross-feature data** — a feature never imports another feature, except a domain group's declared public file (e.g. `@/features/locations/lookups`). Mutations whose data feeds other screens pass `mutationOptions` (`{ invalidate: [lookupQueries.all] }`) to `useCreateEntity`/`useUpdateEntity`/`useDeleteEntity`/`<GenericDeleteButton>`.
+
+**8b. Real API** — in the backend repo follow its README "Adding a resource" (entity + DbSet, idempotent SQL script, request DataAnnotations with the SAME messages as the Zod schema, `init`-property response DTO, endpoints with `SortMap`/`ToPagedAsync`/`WithValidation`, scopes in `Auth/Permissions.cs`). Field names, sortable fields, filter names and permission strings must be identical on both sides and in the mock.
 
 **9. Optional real-time** — `class <Entity>Hub extends GenericHubService<<Entity>, <IdType>>` with `{ event, action }` bindings; mount with `useHubConnection(hub)` in the list route.
 
@@ -352,6 +396,7 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 *   Select by role/label/text (accessible names), never by CSS classes. Scope ambiguous links (`breadcrumb(page)` vs header navigation).
 *   **The table keeps the previous page visible while fetching (`keepPreviousData`)**: after changing page/filter/search, assert with `expect.poll(...)` on the new content, not on the mere presence of rows.
 *   **Wait for navigations that finish async work** before the next step (e.g. `await expect(page).toHaveURL(/\/login/)` after Sign out); otherwise an in-flight request is aborted and state leaks into the next step.
+*   After clicking a link, **wait for the destination's heading** before using labels that also exist on the source page; use `getByLabel(label, { exact: true })` for short labels ("Country" matches "Filter by country").
 *   Time-based behaviour (token expiry) is driven through mock hooks (`expireAccessTokens`), never by waiting.
 *   Assert URLs with patterns tolerant to extra params (`/\/employees(?:\?|$)/`).
 *   Commands: `npm run test:e2e` · `npm run test:e2e:ui` (interactive) · `npm run test:e2e:report` (last HTML report).
@@ -380,6 +425,26 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 
 ## 📝 Change Log
 Newest first. One entry per working session; list what changed, why, and the key files.
+
+### 2026-10-17 — Signup, location management, per-feature authorization, dashboard
+- **Signup:** API `POST /api/auth/register` (`RegisterRequest` DataAnnotations + strength/uniqueness rules, `Signup` options, rate-limited, signs in on success); frontend `/signup` route, `SignupForm`, `signupSchema`, `register()`/`useSignup`, link on the login page. Env: `VITE_AUTH_REGISTER_PATH` (default `/auth/register`), `VITE_AUTH_SIGNUP_ENABLED` (default `true`) — both optional, existing `.env` files keep working.
+- **Countries / States / Cities CRUD** (API endpoints + `features/locations/*` + 12 routes): paged/sorted/searchable lists with usage counts and filters, create/edit forms (country select, country→state cascade), guarded delete with server 409 "in use" messages, duplicate-name field errors.
+- **Per-feature permissions:** `countries|states|cities` × `read|write|delete` on both sides (API policies, route `requirePermissions`, `GenericActionGuard` on every action). Removed `lookups:write`. Demo/seeded manager updated (`002_location_permissions.sql`).
+- **Breaking API route change:** dropdown lookups moved from `/api/countries…` to `/api/lookups/countries…` (`/api/countries` is now the paged CRUD resource). Frontend `locationLookups` and the mock follow.
+- **Generic additions:** `GenericDeleteButton`, `EntityMutationOptions.invalidate` on the CRUD mutation hooks, `src/app/featureRegistry.ts` (nav + dashboard), mock `paging.ts`.
+- **Dashboard:** feature cards with live record counts and a "Your access" matrix (view / create-edit / delete per feature); the demo "Admin action" button is gone.
+- **E2E:** `signup.spec.ts` (3), `locations.spec.ts` (7), dashboard/nav permissions test in `auth.spec.ts` → 29 tests.
+- Verified here: `tsr generate`, `tsc -b`, ESLint clean. Owner: API + browser check against SQL Server OK.
+- **Fixes from the first `verify:all` run (26/29):** (1) generic — search memory restores only when ENTERING a path from another path (`searchMemory.visit` / `recallOnEnter`, root `beforeLoad`); same-path navigations that empty the URL (bulk delete clearing `?selected=`, unticking the last row, clearing the last filter) were being "restored". Unit test added. (2) `LoginForm` validates on submit only: blurring the auto-focused empty username showed "required", shifting the "Create an account" link mid-click. (3) e2e: wait for the target page heading after clicking a "New …" link and use `getByLabel(..., { exact: true })` — "Country" also matched the list's "Filter by country".
+
+### 2026-10-17 — Real .NET backend + Employees on the real domain
+- **Backend** (`enterprise-core-app-claude-server`, owner's ASP.NET Core 10 + SQL Server API) adapted to the 🔌 contract: REST `/api/employees` (paging/sort/search/filters, 201/200-with-entity/204, `bulk-delete`), `/api/countries…` lookups as `[{id,name}]`, ProblemDetails everywhere, camelCase validation keys via `WithValidation<T>()`, unique email (rule + index), JWT auth (`/api/auth/login|refresh|me|logout`, rotating httpOnly refresh cookie, permission policies, login rate limit), CORS with credentials and explicit origins, Development DB bootstrap + demo users. Originals kept in `_original/`. Package added: `Microsoft.AspNetCore.Authentication.JwtBearer` 10.0.13.
+- **Breaking wire change for that API:** routes and field names changed (`empId`→`id`, `emailId`→`email`, `country/state/city`→`countryName/stateName/cityName`); any older client of the old RPC routes must be updated.
+- **Frontend Employees** now uses the real fields (`dateOfBirth`, `gender`, `countryId/stateId/cityId` cascade, `address`, `pincode`); list filters `countryId` + `gender`, Location column, **bulk delete** of selected rows. Removed `department`, `jobTitle`, `hireDate`, `isActive`.
+- **Generic additions:** `services/lookupService.ts` (`lookupQueries`), `components/shared/LookupSelect.tsx`.
+- **Mock backend** mirrors the new API (`handlers/employees.ts`, new `handlers/lookups.ts`, location seed data in `db.ts`). `.env.example` documents the local API URL.
+- **E2E** updated to the new fields; new tests: cascade clearing, bulk delete (19 tests).
+- Verified here: `tsc -b` and ESLint clean. Pending (owner, Windows): `dotnet build` + `dotnet run`, `npm run verify:all`, browser check against the real API with `VITE_ENABLE_MOCKS=false`.
 
 ### 2026-10-17 — Release process and GitHub remote
 - **Pushed** the repository to GitHub: `origin` = https://github.com/Fuema/enterprise-core-app (`main`).

@@ -12,7 +12,7 @@ import type { TableSearch } from '@/lib/tableSearch';
  * const search = Route.useSearch();
  * const onSearchChange = useTableSearchNavigation<EmployeeSearch>();
  * <GenericDataTable search={search} onSearchChange={onSearchChange} ... />
- * onSearchChange({ department: 'Payroll', page: 1 });   // feature filter
+ * onSearchChange({ countryId: 2, page: 1 });   // feature filter
  */
 export function useTableSearchNavigation<TSearch extends TableSearch = TableSearch>(): (
   patch: Partial<TSearch>,

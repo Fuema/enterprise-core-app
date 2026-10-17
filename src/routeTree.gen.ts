@@ -12,11 +12,24 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as ForbiddenRouteImport } from './routes/forbidden'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedCitiesRouteImport } from './routes/_authenticated/cities'
+import { Route as AuthenticatedCountriesRouteImport } from './routes/_authenticated/countries'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
+import { Route as AuthenticatedStatesRouteImport } from './routes/_authenticated/states'
+import { Route as AuthenticatedCitiesIndexRouteImport } from './routes/_authenticated/cities/index'
+import { Route as AuthenticatedCitiesCityIdRouteImport } from './routes/_authenticated/cities/$cityId'
+import { Route as AuthenticatedCitiesNewRouteImport } from './routes/_authenticated/cities/new'
+import { Route as AuthenticatedCountriesIndexRouteImport } from './routes/_authenticated/countries/index'
+import { Route as AuthenticatedCountriesCountryIdRouteImport } from './routes/_authenticated/countries/$countryId'
+import { Route as AuthenticatedCountriesNewRouteImport } from './routes/_authenticated/countries/new'
 import { Route as AuthenticatedEmployeesIndexRouteImport } from './routes/_authenticated/employees/index'
 import { Route as AuthenticatedEmployeesEmployeeIdRouteImport } from './routes/_authenticated/employees/$employeeId'
 import { Route as AuthenticatedEmployeesNewRouteImport } from './routes/_authenticated/employees/new'
+import { Route as AuthenticatedStatesIndexRouteImport } from './routes/_authenticated/states/index'
+import { Route as AuthenticatedStatesStateIdRouteImport } from './routes/_authenticated/states/$stateId'
+import { Route as AuthenticatedStatesNewRouteImport } from './routes/_authenticated/states/new'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -32,9 +45,24 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCitiesRoute = AuthenticatedCitiesRouteImport.update({
+  id: '/cities',
+  path: '/cities',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCountriesRoute = AuthenticatedCountriesRouteImport.update({
+  id: '/countries',
+  path: '/countries',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
@@ -42,6 +70,46 @@ const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedStatesRoute = AuthenticatedStatesRouteImport.update({
+  id: '/states',
+  path: '/states',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCitiesIndexRoute =
+  AuthenticatedCitiesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCitiesRoute,
+  } as any)
+const AuthenticatedCitiesCityIdRoute =
+  AuthenticatedCitiesCityIdRouteImport.update({
+    id: '/$cityId',
+    path: '/$cityId',
+    getParentRoute: () => AuthenticatedCitiesRoute,
+  } as any)
+const AuthenticatedCitiesNewRoute = AuthenticatedCitiesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthenticatedCitiesRoute,
+} as any)
+const AuthenticatedCountriesIndexRoute =
+  AuthenticatedCountriesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCountriesRoute,
+  } as any)
+const AuthenticatedCountriesCountryIdRoute =
+  AuthenticatedCountriesCountryIdRouteImport.update({
+    id: '/$countryId',
+    path: '/$countryId',
+    getParentRoute: () => AuthenticatedCountriesRoute,
+  } as any)
+const AuthenticatedCountriesNewRoute =
+  AuthenticatedCountriesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedCountriesRoute,
+  } as any)
 const AuthenticatedEmployeesIndexRoute =
   AuthenticatedEmployeesIndexRouteImport.update({
     id: '/',
@@ -60,34 +128,87 @@ const AuthenticatedEmployeesNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedEmployeesRoute,
   } as any)
+const AuthenticatedStatesIndexRoute =
+  AuthenticatedStatesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedStatesRoute,
+  } as any)
+const AuthenticatedStatesStateIdRoute =
+  AuthenticatedStatesStateIdRouteImport.update({
+    id: '/$stateId',
+    path: '/$stateId',
+    getParentRoute: () => AuthenticatedStatesRoute,
+  } as any)
+const AuthenticatedStatesNewRoute = AuthenticatedStatesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthenticatedStatesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/cities': typeof AuthenticatedCitiesRouteWithChildren
+  '/countries': typeof AuthenticatedCountriesRouteWithChildren
   '/employees': typeof AuthenticatedEmployeesRouteWithChildren
+  '/states': typeof AuthenticatedStatesRouteWithChildren
+  '/cities/$cityId': typeof AuthenticatedCitiesCityIdRoute
+  '/cities/new': typeof AuthenticatedCitiesNewRoute
+  '/countries/$countryId': typeof AuthenticatedCountriesCountryIdRoute
+  '/countries/new': typeof AuthenticatedCountriesNewRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/employees/new': typeof AuthenticatedEmployeesNewRoute
+  '/states/$stateId': typeof AuthenticatedStatesStateIdRoute
+  '/states/new': typeof AuthenticatedStatesNewRoute
+  '/cities/': typeof AuthenticatedCitiesIndexRoute
+  '/countries/': typeof AuthenticatedCountriesIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/states/': typeof AuthenticatedStatesIndexRoute
 }
 export interface FileRoutesByTo {
   '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/': typeof AuthenticatedIndexRoute
+  '/cities/$cityId': typeof AuthenticatedCitiesCityIdRoute
+  '/cities/new': typeof AuthenticatedCitiesNewRoute
+  '/countries/$countryId': typeof AuthenticatedCountriesCountryIdRoute
+  '/countries/new': typeof AuthenticatedCountriesNewRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/employees/new': typeof AuthenticatedEmployeesNewRoute
+  '/states/$stateId': typeof AuthenticatedStatesStateIdRoute
+  '/states/new': typeof AuthenticatedStatesNewRoute
+  '/cities': typeof AuthenticatedCitiesIndexRoute
+  '/countries': typeof AuthenticatedCountriesIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
+  '/states': typeof AuthenticatedStatesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/_authenticated/cities': typeof AuthenticatedCitiesRouteWithChildren
+  '/_authenticated/countries': typeof AuthenticatedCountriesRouteWithChildren
   '/_authenticated/employees': typeof AuthenticatedEmployeesRouteWithChildren
+  '/_authenticated/states': typeof AuthenticatedStatesRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/cities/$cityId': typeof AuthenticatedCitiesCityIdRoute
+  '/_authenticated/cities/new': typeof AuthenticatedCitiesNewRoute
+  '/_authenticated/countries/$countryId': typeof AuthenticatedCountriesCountryIdRoute
+  '/_authenticated/countries/new': typeof AuthenticatedCountriesNewRoute
   '/_authenticated/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/_authenticated/employees/new': typeof AuthenticatedEmployeesNewRoute
+  '/_authenticated/states/$stateId': typeof AuthenticatedStatesStateIdRoute
+  '/_authenticated/states/new': typeof AuthenticatedStatesNewRoute
+  '/_authenticated/cities/': typeof AuthenticatedCitiesIndexRoute
+  '/_authenticated/countries/': typeof AuthenticatedCountriesIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/_authenticated/states/': typeof AuthenticatedStatesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -95,34 +216,71 @@ export interface FileRouteTypes {
     | '/'
     | '/forbidden'
     | '/login'
+    | '/signup'
+    | '/cities'
+    | '/countries'
     | '/employees'
+    | '/states'
+    | '/cities/$cityId'
+    | '/cities/new'
+    | '/countries/$countryId'
+    | '/countries/new'
     | '/employees/$employeeId'
     | '/employees/new'
+    | '/states/$stateId'
+    | '/states/new'
+    | '/cities/'
+    | '/countries/'
     | '/employees/'
+    | '/states/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forbidden'
     | '/login'
+    | '/signup'
     | '/'
+    | '/cities/$cityId'
+    | '/cities/new'
+    | '/countries/$countryId'
+    | '/countries/new'
     | '/employees/$employeeId'
     | '/employees/new'
+    | '/states/$stateId'
+    | '/states/new'
+    | '/cities'
+    | '/countries'
     | '/employees'
+    | '/states'
   id:
     | '__root__'
     | '/_authenticated'
     | '/forbidden'
     | '/login'
+    | '/signup'
+    | '/_authenticated/cities'
+    | '/_authenticated/countries'
     | '/_authenticated/employees'
+    | '/_authenticated/states'
     | '/_authenticated/'
+    | '/_authenticated/cities/$cityId'
+    | '/_authenticated/cities/new'
+    | '/_authenticated/countries/$countryId'
+    | '/_authenticated/countries/new'
     | '/_authenticated/employees/$employeeId'
     | '/_authenticated/employees/new'
+    | '/_authenticated/states/$stateId'
+    | '/_authenticated/states/new'
+    | '/_authenticated/cities/'
+    | '/_authenticated/countries/'
     | '/_authenticated/employees/'
+    | '/_authenticated/states/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ForbiddenRoute: typeof ForbiddenRoute
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,11 +306,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/': {
       id: '/_authenticated/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/cities': {
+      id: '/_authenticated/cities'
+      path: '/cities'
+      fullPath: '/cities'
+      preLoaderRoute: typeof AuthenticatedCitiesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/countries': {
+      id: '/_authenticated/countries'
+      path: '/countries'
+      fullPath: '/countries'
+      preLoaderRoute: typeof AuthenticatedCountriesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/employees': {
@@ -161,6 +340,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/employees'
       preLoaderRoute: typeof AuthenticatedEmployeesRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/states': {
+      id: '/_authenticated/states'
+      path: '/states'
+      fullPath: '/states'
+      preLoaderRoute: typeof AuthenticatedStatesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/cities/': {
+      id: '/_authenticated/cities/'
+      path: '/'
+      fullPath: '/cities/'
+      preLoaderRoute: typeof AuthenticatedCitiesIndexRouteImport
+      parentRoute: typeof AuthenticatedCitiesRoute
+    }
+    '/_authenticated/cities/$cityId': {
+      id: '/_authenticated/cities/$cityId'
+      path: '/$cityId'
+      fullPath: '/cities/$cityId'
+      preLoaderRoute: typeof AuthenticatedCitiesCityIdRouteImport
+      parentRoute: typeof AuthenticatedCitiesRoute
+    }
+    '/_authenticated/cities/new': {
+      id: '/_authenticated/cities/new'
+      path: '/new'
+      fullPath: '/cities/new'
+      preLoaderRoute: typeof AuthenticatedCitiesNewRouteImport
+      parentRoute: typeof AuthenticatedCitiesRoute
+    }
+    '/_authenticated/countries/': {
+      id: '/_authenticated/countries/'
+      path: '/'
+      fullPath: '/countries/'
+      preLoaderRoute: typeof AuthenticatedCountriesIndexRouteImport
+      parentRoute: typeof AuthenticatedCountriesRoute
+    }
+    '/_authenticated/countries/$countryId': {
+      id: '/_authenticated/countries/$countryId'
+      path: '/$countryId'
+      fullPath: '/countries/$countryId'
+      preLoaderRoute: typeof AuthenticatedCountriesCountryIdRouteImport
+      parentRoute: typeof AuthenticatedCountriesRoute
+    }
+    '/_authenticated/countries/new': {
+      id: '/_authenticated/countries/new'
+      path: '/new'
+      fullPath: '/countries/new'
+      preLoaderRoute: typeof AuthenticatedCountriesNewRouteImport
+      parentRoute: typeof AuthenticatedCountriesRoute
     }
     '/_authenticated/employees/': {
       id: '/_authenticated/employees/'
@@ -183,8 +411,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployeesNewRouteImport
       parentRoute: typeof AuthenticatedEmployeesRoute
     }
+    '/_authenticated/states/': {
+      id: '/_authenticated/states/'
+      path: '/'
+      fullPath: '/states/'
+      preLoaderRoute: typeof AuthenticatedStatesIndexRouteImport
+      parentRoute: typeof AuthenticatedStatesRoute
+    }
+    '/_authenticated/states/$stateId': {
+      id: '/_authenticated/states/$stateId'
+      path: '/$stateId'
+      fullPath: '/states/$stateId'
+      preLoaderRoute: typeof AuthenticatedStatesStateIdRouteImport
+      parentRoute: typeof AuthenticatedStatesRoute
+    }
+    '/_authenticated/states/new': {
+      id: '/_authenticated/states/new'
+      path: '/new'
+      fullPath: '/states/new'
+      preLoaderRoute: typeof AuthenticatedStatesNewRouteImport
+      parentRoute: typeof AuthenticatedStatesRoute
+    }
   }
 }
+
+interface AuthenticatedCitiesRouteChildren {
+  AuthenticatedCitiesCityIdRoute: typeof AuthenticatedCitiesCityIdRoute
+  AuthenticatedCitiesNewRoute: typeof AuthenticatedCitiesNewRoute
+  AuthenticatedCitiesIndexRoute: typeof AuthenticatedCitiesIndexRoute
+}
+
+const AuthenticatedCitiesRouteChildren: AuthenticatedCitiesRouteChildren = {
+  AuthenticatedCitiesCityIdRoute: AuthenticatedCitiesCityIdRoute,
+  AuthenticatedCitiesNewRoute: AuthenticatedCitiesNewRoute,
+  AuthenticatedCitiesIndexRoute: AuthenticatedCitiesIndexRoute,
+}
+
+const AuthenticatedCitiesRouteWithChildren =
+  AuthenticatedCitiesRoute._addFileChildren(AuthenticatedCitiesRouteChildren)
+
+interface AuthenticatedCountriesRouteChildren {
+  AuthenticatedCountriesCountryIdRoute: typeof AuthenticatedCountriesCountryIdRoute
+  AuthenticatedCountriesNewRoute: typeof AuthenticatedCountriesNewRoute
+  AuthenticatedCountriesIndexRoute: typeof AuthenticatedCountriesIndexRoute
+}
+
+const AuthenticatedCountriesRouteChildren: AuthenticatedCountriesRouteChildren =
+  {
+    AuthenticatedCountriesCountryIdRoute: AuthenticatedCountriesCountryIdRoute,
+    AuthenticatedCountriesNewRoute: AuthenticatedCountriesNewRoute,
+    AuthenticatedCountriesIndexRoute: AuthenticatedCountriesIndexRoute,
+  }
+
+const AuthenticatedCountriesRouteWithChildren =
+  AuthenticatedCountriesRoute._addFileChildren(
+    AuthenticatedCountriesRouteChildren,
+  )
 
 interface AuthenticatedEmployeesRouteChildren {
   AuthenticatedEmployeesEmployeeIdRoute: typeof AuthenticatedEmployeesEmployeeIdRoute
@@ -205,13 +487,34 @@ const AuthenticatedEmployeesRouteWithChildren =
     AuthenticatedEmployeesRouteChildren,
   )
 
+interface AuthenticatedStatesRouteChildren {
+  AuthenticatedStatesStateIdRoute: typeof AuthenticatedStatesStateIdRoute
+  AuthenticatedStatesNewRoute: typeof AuthenticatedStatesNewRoute
+  AuthenticatedStatesIndexRoute: typeof AuthenticatedStatesIndexRoute
+}
+
+const AuthenticatedStatesRouteChildren: AuthenticatedStatesRouteChildren = {
+  AuthenticatedStatesStateIdRoute: AuthenticatedStatesStateIdRoute,
+  AuthenticatedStatesNewRoute: AuthenticatedStatesNewRoute,
+  AuthenticatedStatesIndexRoute: AuthenticatedStatesIndexRoute,
+}
+
+const AuthenticatedStatesRouteWithChildren =
+  AuthenticatedStatesRoute._addFileChildren(AuthenticatedStatesRouteChildren)
+
 interface AuthenticatedRouteChildren {
+  AuthenticatedCitiesRoute: typeof AuthenticatedCitiesRouteWithChildren
+  AuthenticatedCountriesRoute: typeof AuthenticatedCountriesRouteWithChildren
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRouteWithChildren
+  AuthenticatedStatesRoute: typeof AuthenticatedStatesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedCitiesRoute: AuthenticatedCitiesRouteWithChildren,
+  AuthenticatedCountriesRoute: AuthenticatedCountriesRouteWithChildren,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRouteWithChildren,
+  AuthenticatedStatesRoute: AuthenticatedStatesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
@@ -223,6 +526,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ForbiddenRoute: ForbiddenRoute,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

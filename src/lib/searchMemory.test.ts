@@ -18,6 +18,16 @@ describe('searchMemory', () => {
     expect(memory.recall('/a')).toBeUndefined();
   });
 
+  it('restores only when entering a path from another path', () => {
+    const memory = createSearchMemory();
+    memory.remember('/employees', { selected: '4,9' });
+    memory.visit('/employees/4');
+    expect(memory.recallOnEnter('/employees')).toEqual({ selected: '4,9' });
+    memory.visit('/employees');
+    // Same path: the user just cleared the state (e.g. bulk delete cleared the selection).
+    expect(memory.recallOnEnter('/employees/')).toBeUndefined();
+  });
+
   it('evicts the least recently used entry', () => {
     const memory = createSearchMemory(2);
     memory.remember('/a', { page: 1 });

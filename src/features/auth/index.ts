@@ -2,9 +2,11 @@ import { registerAuthBridge } from '@/lib/authBridge';
 import { useAuthStore } from './store/authStore';
 
 export { LoginForm } from './components/LoginForm';
-export { useLogin, useLogout } from './hooks/useLogin';
+export { SignupForm } from './components/SignupForm';
+export { useLogin, useLogout, useSignup } from './hooks/useLogin';
 export { loginSchema, type LoginRequest } from './schemas/loginSchema';
-export { login, logout, restoreSession, fetchCurrentUser } from './services/authService';
+export { signupSchema, type SignupRequest } from './schemas/signupSchema';
+export { login, logout, register, restoreSession, fetchCurrentUser } from './services/authService';
 export { useAuthStore, isAuthenticated, currentUserCan, usePermissions } from './store/authStore';
 export type { AuthUser, SessionStatus } from './types/auth';
 
