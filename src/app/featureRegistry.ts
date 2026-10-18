@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { LinkProps } from '@tanstack/react-router';
-import { Building2, Globe2, Map as MapIcon, UserCog, Users, type LucideIcon } from 'lucide-react';
+import { Building2, Globe2, Map as MapIcon, ScrollText, ShieldCheck, UserCog, Users, type LucideIcon } from 'lucide-react';
 import { EMPLOYEE_PERMISSIONS } from '@/features/employees/types/employee';
 import { employeeQueries } from '@/features/employees/services/employeeService';
 import { cityQueries } from '@/features/locations/cities/services/cityService';
@@ -9,15 +9,20 @@ import { countryQueries } from '@/features/locations/countries/services/countryS
 import { COUNTRY_PERMISSIONS } from '@/features/locations/countries/types/country';
 import { stateQueries } from '@/features/locations/states/services/stateService';
 import { STATE_PERMISSIONS } from '@/features/locations/states/types/state';
-import { userQueries } from '@/features/users/services/userService';
-import { USER_PERMISSIONS } from '@/features/users/types/user';
+import { auditQueries } from '@/features/access/audit/services/auditService';
+import { AUDIT_PERMISSIONS } from '@/features/access/audit/types/audit';
+import { roleQueries } from '@/features/access/roles/services/roleService';
+import { ROLE_PERMISSIONS } from '@/features/access/roles/types/role';
+import { userQueries } from '@/features/access/users/services/userService';
+import { USER_PERMISSIONS } from '@/features/access/users/types/user';
 
 /** Smallest page: we only need `totalCount`. */
 const COUNT_FILTER = { page: 1, pageSize: 1 } as const;
 
 export interface FeaturePermissions {
   read: string;
-  write: string;
+  /** Omitted for read-only features (audit log). */
+  write?: string;
   /** Omitted when the feature has no delete (e.g. users are deactivated instead). */
   delete?: string;
 }
@@ -79,10 +84,28 @@ export const FEATURES: readonly FeatureEntry[] = [
   {
     key: 'users',
     label: 'Users',
-    description: 'Accounts, roles and per-feature permissions.',
+    description: 'Accounts, their roles, extra permissions and sessions.',
     to: '/users',
     icon: UserCog,
     permissions: USER_PERMISSIONS,
     useCount: () => useQuery({ ...userQueries.list(COUNT_FILTER), select: (page) => page.totalCount }).data,
+  },
+  {
+    key: 'roles',
+    label: 'Roles',
+    description: 'Named permission sets assigned to users.',
+    to: '/roles',
+    icon: ShieldCheck,
+    permissions: ROLE_PERMISSIONS,
+    useCount: () => useQuery({ ...roleQueries.list(COUNT_FILTER), select: (page) => page.totalCount }).data,
+  },
+  {
+    key: 'audit',
+    label: 'Audit log',
+    description: 'Sign-ins and every change to accounts and roles.',
+    to: '/audit',
+    icon: ScrollText,
+    permissions: AUDIT_PERMISSIONS,
+    useCount: () => useQuery({ ...auditQueries.list(COUNT_FILTER), select: (page) => page.totalCount }).data,
   },
 ];

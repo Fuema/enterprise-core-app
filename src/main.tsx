@@ -23,7 +23,11 @@ async function bootstrap(): Promise<void> {
 
   // 1. Wire the generic HTTP/hub engines to the auth feature.
   //    When the refresh cookie is gone, re-run route guards -> /login.
-  initializeAuth({ onSessionExpired: () => void router.invalidate() });
+  initializeAuth({
+    onSessionExpired: () => void router.invalidate(),
+    // Permissions changed server-side (picked up at the last token refresh): re-run route guards.
+    onAccessChanged: () => void router.invalidate(),
+  });
 
   // 2. Silent refresh: a page reload keeps the user signed in (httpOnly cookie).
   await restoreSession();

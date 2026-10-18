@@ -10,6 +10,12 @@ export interface AuthBridge {
   setAccessToken: (token: string) => void;
   /** Called when the refresh cookie is missing/expired: the session is over. */
   onSessionExpired: () => void;
+  /**
+   * Called after a silent refresh issued a new access token. The server may have
+   * changed the user's roles/permissions (that is why the old token was rejected),
+   * so the auth feature reloads the principal here.
+   */
+  onAccessTokenRefreshed?: () => void;
 }
 
 const noopBridge: AuthBridge = {

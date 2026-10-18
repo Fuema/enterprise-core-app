@@ -1,5 +1,5 @@
 import { delay, http } from 'msw';
-import { cities, countries, states } from '../db';
+import { PERMISSION_CATALOG, cities, countries, states } from '../db';
 import { api, ok } from '../http';
 import { authorize } from './auth';
 
@@ -11,6 +11,13 @@ const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompar
 const toItem = ({ id, name }: { id: number; name: string }) => ({ id, name });
 
 export const lookupHandlers = [
+  http.get(api('/lookups/permissions'), async ({ request }) => {
+    await delay(80);
+    const auth = authorize(request);
+    if (auth instanceof Response) return auth;
+    return ok({ scopes: PERMISSION_CATALOG });
+  }),
+
   http.get(api('/lookups/countries'), async ({ request }) => {
     await delay(120);
     const auth = authorize(request);

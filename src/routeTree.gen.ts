@@ -14,11 +14,15 @@ import { Route as ForbiddenRouteImport } from './routes/forbidden'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
 import { Route as AuthenticatedCitiesRouteImport } from './routes/_authenticated/cities'
 import { Route as AuthenticatedCountriesRouteImport } from './routes/_authenticated/countries'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
+import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated/roles'
 import { Route as AuthenticatedStatesRouteImport } from './routes/_authenticated/states'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedAuditIndexRouteImport } from './routes/_authenticated/audit/index'
 import { Route as AuthenticatedCitiesIndexRouteImport } from './routes/_authenticated/cities/index'
 import { Route as AuthenticatedCitiesCityIdRouteImport } from './routes/_authenticated/cities/$cityId'
 import { Route as AuthenticatedCitiesNewRouteImport } from './routes/_authenticated/cities/new'
@@ -28,11 +32,15 @@ import { Route as AuthenticatedCountriesNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedEmployeesIndexRouteImport } from './routes/_authenticated/employees/index'
 import { Route as AuthenticatedEmployeesEmployeeIdRouteImport } from './routes/_authenticated/employees/$employeeId'
 import { Route as AuthenticatedEmployeesNewRouteImport } from './routes/_authenticated/employees/new'
+import { Route as AuthenticatedRolesIndexRouteImport } from './routes/_authenticated/roles/index'
+import { Route as AuthenticatedRolesRoleIdRouteImport } from './routes/_authenticated/roles/$roleId'
+import { Route as AuthenticatedRolesNewRouteImport } from './routes/_authenticated/roles/new'
 import { Route as AuthenticatedStatesIndexRouteImport } from './routes/_authenticated/states/index'
 import { Route as AuthenticatedStatesStateIdRouteImport } from './routes/_authenticated/states/$stateId'
 import { Route as AuthenticatedStatesNewRouteImport } from './routes/_authenticated/states/new'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedUsersUserIdRouteImport } from './routes/_authenticated/users/$userId'
+import { Route as AuthenticatedUsersNewRouteImport } from './routes/_authenticated/users/new'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -58,6 +66,16 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAuditRoute = AuthenticatedAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedCitiesRoute = AuthenticatedCitiesRouteImport.update({
   id: '/cities',
   path: '/cities',
@@ -73,6 +91,11 @@ const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedStatesRoute = AuthenticatedStatesRouteImport.update({
   id: '/states',
   path: '/states',
@@ -82,6 +105,11 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAuditIndexRoute = AuthenticatedAuditIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAuditRoute,
 } as any)
 const AuthenticatedCitiesIndexRoute =
   AuthenticatedCitiesIndexRouteImport.update({
@@ -136,6 +164,22 @@ const AuthenticatedEmployeesNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedEmployeesRoute,
   } as any)
+const AuthenticatedRolesIndexRoute = AuthenticatedRolesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRolesRoute,
+} as any)
+const AuthenticatedRolesRoleIdRoute =
+  AuthenticatedRolesRoleIdRouteImport.update({
+    id: '/$roleId',
+    path: '/$roleId',
+    getParentRoute: () => AuthenticatedRolesRoute,
+  } as any)
+const AuthenticatedRolesNewRoute = AuthenticatedRolesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthenticatedRolesRoute,
+} as any)
 const AuthenticatedStatesIndexRoute =
   AuthenticatedStatesIndexRouteImport.update({
     id: '/',
@@ -164,15 +208,23 @@ const AuthenticatedUsersUserIdRoute =
     path: '/$userId',
     getParentRoute: () => AuthenticatedUsersRoute,
   } as any)
+const AuthenticatedUsersNewRoute = AuthenticatedUsersNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthenticatedUsersRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/account': typeof AuthenticatedAccountRoute
+  '/audit': typeof AuthenticatedAuditRouteWithChildren
   '/cities': typeof AuthenticatedCitiesRouteWithChildren
   '/countries': typeof AuthenticatedCountriesRouteWithChildren
   '/employees': typeof AuthenticatedEmployeesRouteWithChildren
+  '/roles': typeof AuthenticatedRolesRouteWithChildren
   '/states': typeof AuthenticatedStatesRouteWithChildren
   '/users': typeof AuthenticatedUsersRouteWithChildren
   '/cities/$cityId': typeof AuthenticatedCitiesCityIdRoute
@@ -181,12 +233,17 @@ export interface FileRoutesByFullPath {
   '/countries/new': typeof AuthenticatedCountriesNewRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/employees/new': typeof AuthenticatedEmployeesNewRoute
+  '/roles/$roleId': typeof AuthenticatedRolesRoleIdRoute
+  '/roles/new': typeof AuthenticatedRolesNewRoute
   '/states/$stateId': typeof AuthenticatedStatesStateIdRoute
   '/states/new': typeof AuthenticatedStatesNewRoute
   '/users/$userId': typeof AuthenticatedUsersUserIdRoute
+  '/users/new': typeof AuthenticatedUsersNewRoute
+  '/audit/': typeof AuthenticatedAuditIndexRoute
   '/cities/': typeof AuthenticatedCitiesIndexRoute
   '/countries/': typeof AuthenticatedCountriesIndexRoute
   '/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/roles/': typeof AuthenticatedRolesIndexRoute
   '/states/': typeof AuthenticatedStatesIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
 }
@@ -194,6 +251,7 @@ export interface FileRoutesByTo {
   '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/account': typeof AuthenticatedAccountRoute
   '/': typeof AuthenticatedIndexRoute
   '/cities/$cityId': typeof AuthenticatedCitiesCityIdRoute
   '/cities/new': typeof AuthenticatedCitiesNewRoute
@@ -201,12 +259,17 @@ export interface FileRoutesByTo {
   '/countries/new': typeof AuthenticatedCountriesNewRoute
   '/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/employees/new': typeof AuthenticatedEmployeesNewRoute
+  '/roles/$roleId': typeof AuthenticatedRolesRoleIdRoute
+  '/roles/new': typeof AuthenticatedRolesNewRoute
   '/states/$stateId': typeof AuthenticatedStatesStateIdRoute
   '/states/new': typeof AuthenticatedStatesNewRoute
   '/users/$userId': typeof AuthenticatedUsersUserIdRoute
+  '/users/new': typeof AuthenticatedUsersNewRoute
+  '/audit': typeof AuthenticatedAuditIndexRoute
   '/cities': typeof AuthenticatedCitiesIndexRoute
   '/countries': typeof AuthenticatedCountriesIndexRoute
   '/employees': typeof AuthenticatedEmployeesIndexRoute
+  '/roles': typeof AuthenticatedRolesIndexRoute
   '/states': typeof AuthenticatedStatesIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
 }
@@ -216,9 +279,12 @@ export interface FileRoutesById {
   '/forbidden': typeof ForbiddenRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_authenticated/account': typeof AuthenticatedAccountRoute
+  '/_authenticated/audit': typeof AuthenticatedAuditRouteWithChildren
   '/_authenticated/cities': typeof AuthenticatedCitiesRouteWithChildren
   '/_authenticated/countries': typeof AuthenticatedCountriesRouteWithChildren
   '/_authenticated/employees': typeof AuthenticatedEmployeesRouteWithChildren
+  '/_authenticated/roles': typeof AuthenticatedRolesRouteWithChildren
   '/_authenticated/states': typeof AuthenticatedStatesRouteWithChildren
   '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -228,12 +294,17 @@ export interface FileRoutesById {
   '/_authenticated/countries/new': typeof AuthenticatedCountriesNewRoute
   '/_authenticated/employees/$employeeId': typeof AuthenticatedEmployeesEmployeeIdRoute
   '/_authenticated/employees/new': typeof AuthenticatedEmployeesNewRoute
+  '/_authenticated/roles/$roleId': typeof AuthenticatedRolesRoleIdRoute
+  '/_authenticated/roles/new': typeof AuthenticatedRolesNewRoute
   '/_authenticated/states/$stateId': typeof AuthenticatedStatesStateIdRoute
   '/_authenticated/states/new': typeof AuthenticatedStatesNewRoute
   '/_authenticated/users/$userId': typeof AuthenticatedUsersUserIdRoute
+  '/_authenticated/users/new': typeof AuthenticatedUsersNewRoute
+  '/_authenticated/audit/': typeof AuthenticatedAuditIndexRoute
   '/_authenticated/cities/': typeof AuthenticatedCitiesIndexRoute
   '/_authenticated/countries/': typeof AuthenticatedCountriesIndexRoute
   '/_authenticated/employees/': typeof AuthenticatedEmployeesIndexRoute
+  '/_authenticated/roles/': typeof AuthenticatedRolesIndexRoute
   '/_authenticated/states/': typeof AuthenticatedStatesIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
@@ -244,9 +315,12 @@ export interface FileRouteTypes {
     | '/forbidden'
     | '/login'
     | '/signup'
+    | '/account'
+    | '/audit'
     | '/cities'
     | '/countries'
     | '/employees'
+    | '/roles'
     | '/states'
     | '/users'
     | '/cities/$cityId'
@@ -255,12 +329,17 @@ export interface FileRouteTypes {
     | '/countries/new'
     | '/employees/$employeeId'
     | '/employees/new'
+    | '/roles/$roleId'
+    | '/roles/new'
     | '/states/$stateId'
     | '/states/new'
     | '/users/$userId'
+    | '/users/new'
+    | '/audit/'
     | '/cities/'
     | '/countries/'
     | '/employees/'
+    | '/roles/'
     | '/states/'
     | '/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -268,6 +347,7 @@ export interface FileRouteTypes {
     | '/forbidden'
     | '/login'
     | '/signup'
+    | '/account'
     | '/'
     | '/cities/$cityId'
     | '/cities/new'
@@ -275,12 +355,17 @@ export interface FileRouteTypes {
     | '/countries/new'
     | '/employees/$employeeId'
     | '/employees/new'
+    | '/roles/$roleId'
+    | '/roles/new'
     | '/states/$stateId'
     | '/states/new'
     | '/users/$userId'
+    | '/users/new'
+    | '/audit'
     | '/cities'
     | '/countries'
     | '/employees'
+    | '/roles'
     | '/states'
     | '/users'
   id:
@@ -289,9 +374,12 @@ export interface FileRouteTypes {
     | '/forbidden'
     | '/login'
     | '/signup'
+    | '/_authenticated/account'
+    | '/_authenticated/audit'
     | '/_authenticated/cities'
     | '/_authenticated/countries'
     | '/_authenticated/employees'
+    | '/_authenticated/roles'
     | '/_authenticated/states'
     | '/_authenticated/users'
     | '/_authenticated/'
@@ -301,12 +389,17 @@ export interface FileRouteTypes {
     | '/_authenticated/countries/new'
     | '/_authenticated/employees/$employeeId'
     | '/_authenticated/employees/new'
+    | '/_authenticated/roles/$roleId'
+    | '/_authenticated/roles/new'
     | '/_authenticated/states/$stateId'
     | '/_authenticated/states/new'
     | '/_authenticated/users/$userId'
+    | '/_authenticated/users/new'
+    | '/_authenticated/audit/'
     | '/_authenticated/cities/'
     | '/_authenticated/countries/'
     | '/_authenticated/employees/'
+    | '/_authenticated/roles/'
     | '/_authenticated/states/'
     | '/_authenticated/users/'
   fileRoutesById: FileRoutesById
@@ -355,6 +448,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/account': {
+      id: '/_authenticated/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/audit': {
+      id: '/_authenticated/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuthenticatedAuditRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/cities': {
       id: '/_authenticated/cities'
       path: '/cities'
@@ -376,6 +483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployeesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/roles': {
+      id: '/_authenticated/roles'
+      path: '/roles'
+      fullPath: '/roles'
+      preLoaderRoute: typeof AuthenticatedRolesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/states': {
       id: '/_authenticated/states'
       path: '/states'
@@ -389,6 +503,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/audit/': {
+      id: '/_authenticated/audit/'
+      path: '/'
+      fullPath: '/audit/'
+      preLoaderRoute: typeof AuthenticatedAuditIndexRouteImport
+      parentRoute: typeof AuthenticatedAuditRoute
     }
     '/_authenticated/cities/': {
       id: '/_authenticated/cities/'
@@ -453,6 +574,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployeesNewRouteImport
       parentRoute: typeof AuthenticatedEmployeesRoute
     }
+    '/_authenticated/roles/': {
+      id: '/_authenticated/roles/'
+      path: '/'
+      fullPath: '/roles/'
+      preLoaderRoute: typeof AuthenticatedRolesIndexRouteImport
+      parentRoute: typeof AuthenticatedRolesRoute
+    }
+    '/_authenticated/roles/$roleId': {
+      id: '/_authenticated/roles/$roleId'
+      path: '/$roleId'
+      fullPath: '/roles/$roleId'
+      preLoaderRoute: typeof AuthenticatedRolesRoleIdRouteImport
+      parentRoute: typeof AuthenticatedRolesRoute
+    }
+    '/_authenticated/roles/new': {
+      id: '/_authenticated/roles/new'
+      path: '/new'
+      fullPath: '/roles/new'
+      preLoaderRoute: typeof AuthenticatedRolesNewRouteImport
+      parentRoute: typeof AuthenticatedRolesRoute
+    }
     '/_authenticated/states/': {
       id: '/_authenticated/states/'
       path: '/'
@@ -488,8 +630,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersUserIdRouteImport
       parentRoute: typeof AuthenticatedUsersRoute
     }
+    '/_authenticated/users/new': {
+      id: '/_authenticated/users/new'
+      path: '/new'
+      fullPath: '/users/new'
+      preLoaderRoute: typeof AuthenticatedUsersNewRouteImport
+      parentRoute: typeof AuthenticatedUsersRoute
+    }
   }
 }
+
+interface AuthenticatedAuditRouteChildren {
+  AuthenticatedAuditIndexRoute: typeof AuthenticatedAuditIndexRoute
+}
+
+const AuthenticatedAuditRouteChildren: AuthenticatedAuditRouteChildren = {
+  AuthenticatedAuditIndexRoute: AuthenticatedAuditIndexRoute,
+}
+
+const AuthenticatedAuditRouteWithChildren =
+  AuthenticatedAuditRoute._addFileChildren(AuthenticatedAuditRouteChildren)
 
 interface AuthenticatedCitiesRouteChildren {
   AuthenticatedCitiesCityIdRoute: typeof AuthenticatedCitiesCityIdRoute
@@ -543,6 +703,21 @@ const AuthenticatedEmployeesRouteWithChildren =
     AuthenticatedEmployeesRouteChildren,
   )
 
+interface AuthenticatedRolesRouteChildren {
+  AuthenticatedRolesRoleIdRoute: typeof AuthenticatedRolesRoleIdRoute
+  AuthenticatedRolesNewRoute: typeof AuthenticatedRolesNewRoute
+  AuthenticatedRolesIndexRoute: typeof AuthenticatedRolesIndexRoute
+}
+
+const AuthenticatedRolesRouteChildren: AuthenticatedRolesRouteChildren = {
+  AuthenticatedRolesRoleIdRoute: AuthenticatedRolesRoleIdRoute,
+  AuthenticatedRolesNewRoute: AuthenticatedRolesNewRoute,
+  AuthenticatedRolesIndexRoute: AuthenticatedRolesIndexRoute,
+}
+
+const AuthenticatedRolesRouteWithChildren =
+  AuthenticatedRolesRoute._addFileChildren(AuthenticatedRolesRouteChildren)
+
 interface AuthenticatedStatesRouteChildren {
   AuthenticatedStatesStateIdRoute: typeof AuthenticatedStatesStateIdRoute
   AuthenticatedStatesNewRoute: typeof AuthenticatedStatesNewRoute
@@ -560,11 +735,13 @@ const AuthenticatedStatesRouteWithChildren =
 
 interface AuthenticatedUsersRouteChildren {
   AuthenticatedUsersUserIdRoute: typeof AuthenticatedUsersUserIdRoute
+  AuthenticatedUsersNewRoute: typeof AuthenticatedUsersNewRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
 }
 
 const AuthenticatedUsersRouteChildren: AuthenticatedUsersRouteChildren = {
   AuthenticatedUsersUserIdRoute: AuthenticatedUsersUserIdRoute,
+  AuthenticatedUsersNewRoute: AuthenticatedUsersNewRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
 }
 
@@ -572,18 +749,24 @@ const AuthenticatedUsersRouteWithChildren =
   AuthenticatedUsersRoute._addFileChildren(AuthenticatedUsersRouteChildren)
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
+  AuthenticatedAuditRoute: typeof AuthenticatedAuditRouteWithChildren
   AuthenticatedCitiesRoute: typeof AuthenticatedCitiesRouteWithChildren
   AuthenticatedCountriesRoute: typeof AuthenticatedCountriesRouteWithChildren
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRouteWithChildren
+  AuthenticatedRolesRoute: typeof AuthenticatedRolesRouteWithChildren
   AuthenticatedStatesRoute: typeof AuthenticatedStatesRouteWithChildren
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAccountRoute: AuthenticatedAccountRoute,
+  AuthenticatedAuditRoute: AuthenticatedAuditRouteWithChildren,
   AuthenticatedCitiesRoute: AuthenticatedCitiesRouteWithChildren,
   AuthenticatedCountriesRoute: AuthenticatedCountriesRouteWithChildren,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRouteWithChildren,
+  AuthenticatedRolesRoute: AuthenticatedRolesRouteWithChildren,
   AuthenticatedStatesRoute: AuthenticatedStatesRouteWithChildren,
   AuthenticatedUsersRoute: AuthenticatedUsersRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

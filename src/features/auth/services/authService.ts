@@ -3,9 +3,11 @@ import { env } from '@/lib/env';
 import { queryClient } from '@/lib/queryClient';
 import { searchMemory } from '@/lib/searchMemory';
 import type { LoginRequest } from '../schemas/loginSchema';
+import type { ChangePasswordRequest } from '../schemas/changePasswordSchema';
 import type { SignupRequest } from '../schemas/signupSchema';
 import { useAuthStore } from '../store/authStore';
-import { authUserSchema, loginResponseSchema, type AuthUser } from '../types/auth';
+import { z } from 'zod';
+import { authUserSchema, loginResponseSchema, sessionSchema, type AuthUser, type Session } from '../types/auth';
 
 /** Loads the current principal using the access token already in the store. */
 export async function fetchCurrentUser(): Promise<AuthUser> {
@@ -47,6 +49,47 @@ export async function logout(): Promise<void> {
     queryClient.clear();
     searchMemory.clear();
   }
+}
+
+/**
+ * Changes the signed-in user's password (also completes a forced change after an
+ * administrator reset). The server signs out every OTHER session and returns a
+ * fresh access token for this one.
+ */
+export async function changePassword(payload: ChangePasswordRequest): Promise<AuthUser> {
+  const response = await apiClient.post<unknown>(env.VITE_AUTH_CHANGE_PASSWORD_PATH, payload);
+  return startSession(response.data);
+}
+
+const sessionListSchema = z.array(sessionSchema);
+
+/** The signed-in user's active sessions (devices/browsers). */
+export async function fetchMySessions(signal?: AbortSignal): Promise<Session[]> {
+  const response = await apiClient.get<unknown>(env.VITE_AUTH_SESSIONS_PATH, { signal });
+  return sessionListSchema.parse(unwrapEnvelope(response.data));
+}
+
+export async function revokeMySession(sessionId: string): Promise<void> {
+  await apiClient.delete(`${env.VITE_AUTH_SESSIONS_PATH}/${encodeURIComponent(sessionId)}`);
+}
+
+/**
+ * Reloads the principal after a silent token refresh. A refresh usually means
+ * the server rejected the old token because access changed (roles, grants,
+ * password), so permissions in the UI must follow. Returns true when anything
+ * that affects access changed.
+ */
+export async function reloadPrincipal(): Promise<boolean> {
+  const store = useAuthStore.getState();
+  if (store.status !== 'authenticated' || !store.user) return false;
+  const previous = store.user;
+  const next = await fetchCurrentUser();
+  useAuthStore.getState().setUser(next);
+  return (
+    previous.mustChangePassword !== next.mustChangePassword ||
+    previous.permissions.join(',') !== next.permissions.join(',') ||
+    previous.roles.join(',') !== next.roles.join(',')
+  );
 }
 
 /**

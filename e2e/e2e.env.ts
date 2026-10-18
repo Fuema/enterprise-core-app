@@ -23,6 +23,8 @@ export const e2eEnv: Record<string, string> = {
   VITE_AUTH_ME_PATH: '/auth/me',
   VITE_AUTH_REGISTER_PATH: '/auth/register',
   VITE_AUTH_SIGNUP_ENABLED: 'true',
+  VITE_AUTH_CHANGE_PASSWORD_PATH: '/auth/change-password',
+  VITE_AUTH_SESSIONS_PATH: '/auth/sessions',
   VITE_HUB_BASE_URL: '',
   VITE_HUB_MAX_RETRY_DELAY_MS: '30000',
   VITE_HUB_MAX_RETRIES: '10',

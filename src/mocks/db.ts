@@ -10,11 +10,40 @@ export interface MockUser {
   password: string;
   displayName: string;
   email: string;
-  roles: string[];
-  permissions: string[];
+  /** Effective access = permissions of these roles + directPermissions (API: AccessService). */
+  roleIds: number[];
+  directPermissions: string[];
   /** Inactive accounts cannot sign in or refresh (API: AppUser.IsActive). */
   isActive: boolean;
   createdAtUtc: string;
+  failedLoginCount: number;
+  lockoutEndUtc: string | null;
+  mustChangePassword: boolean;
+  lastLoginAtUtc: string | null;
+  passwordChangedAtUtc: string | null;
+}
+
+export interface MockRole {
+  id: number;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  permissions: string[];
+  createdAtUtc: string;
+  updatedAtUtc: string | null;
+}
+
+export interface MockAuditEntry {
+  id: number;
+  occurredAtUtc: string;
+  actorUserId: number | null;
+  actorName: string | null;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  targetName: string | null;
+  details: string | null;
+  ipAddress: string | null;
 }
 
 /** Same shape as EmployeeResponse in the .NET API. */
@@ -51,43 +80,76 @@ export interface MockCity {
   countryId: number;
 }
 
-/** Demo accounts: username / password are identical. Signup appends to this list (until reload). */
-export const users: MockUser[] = [
-  {
-    id: 1,
-    username: 'admin',
-    password: 'admin',
-    displayName: 'Ada Admin',
-    email: 'admin@example.test',
-    roles: ['Administrator'],
-    permissions: ['*'],
-    isActive: true,
-    createdAtUtc: '2026-01-05T09:00:00Z',
-  },
+/** Roles (API: dbo.Roles + RolePermissions). Administrator is the locked system role. */
+export const roles: MockRole[] = [
+  { id: 1, name: 'Administrator', description: 'Full access to every feature, including future ones', isSystem: true, permissions: ['*'], createdAtUtc: '2026-01-01T00:00:00Z', updatedAtUtc: null },
   {
     id: 2,
-    username: 'manager',
-    password: 'manager',
-    displayName: 'Max Manager',
-    email: 'manager@example.test',
-    roles: ['HR Manager'],
-    // Edits employees and cities; only looks at countries and states (same as the API's seeded manager).
+    name: 'HR Manager',
+    description: 'Manages employees and cities; reads countries and states',
+    isSystem: false,
     permissions: ['employees:read', 'employees:write', 'countries:read', 'states:read', 'cities:read', 'cities:write'],
-    isActive: true,
-    createdAtUtc: '2026-02-10T09:00:00Z',
+    createdAtUtc: '2026-01-01T00:00:00Z',
+    updatedAtUtc: null,
   },
-  {
-    id: 3,
-    username: 'viewer',
-    password: 'viewer',
-    displayName: 'Vera Viewer',
-    email: 'viewer@example.test',
-    roles: ['Auditor'],
-    permissions: ['employees:read'],
-    isActive: true,
-    createdAtUtc: '2026-03-15T09:00:00Z',
-  },
+  { id: 3, name: 'Auditor', description: 'Read-only access to employees', isSystem: false, permissions: ['employees:read'], createdAtUtc: '2026-01-01T00:00:00Z', updatedAtUtc: null },
+  { id: 4, name: 'User', description: 'Default role of self-registered accounts', isSystem: false, permissions: ['employees:read'], createdAtUtc: '2026-01-01T00:00:00Z', updatedAtUtc: null },
 ];
+
+function seedUser(id: number, username: string, displayName: string, roleId: number, createdAtUtc: string): MockUser {
+  return {
+    id,
+    username,
+    password: username,
+    displayName,
+    email: `${username}@example.test`,
+    roleIds: [roleId],
+    directPermissions: [],
+    isActive: true,
+    createdAtUtc,
+    failedLoginCount: 0,
+    lockoutEndUtc: null,
+    mustChangePassword: false,
+    lastLoginAtUtc: null,
+    passwordChangedAtUtc: null,
+  };
+}
+
+/** Demo accounts: username / password are identical. Signup and "New user" append (until reload). */
+export const users: MockUser[] = [
+  seedUser(1, 'admin', 'Ada Admin', 1, '2026-01-05T09:00:00Z'),
+  // Edits employees and cities; only looks at countries and states (same as the API's seeded manager).
+  seedUser(2, 'manager', 'Max Manager', 2, '2026-02-10T09:00:00Z'),
+  seedUser(3, 'viewer', 'Vera Viewer', 3, '2026-03-15T09:00:00Z'),
+];
+
+export const auditLog: MockAuditEntry[] = [];
+
+/** Roles of a user, by name order. */
+export function rolesOf(user: MockUser): MockRole[] {
+  return roles.filter((role) => user.roleIds.includes(role.id)).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** API: AccessService.Effective — distinct, "*" first, then alphabetical. */
+export function effectivePermissions(user: MockUser): string[] {
+  const all = new Set([...rolesOf(user).flatMap((role) => role.permissions), ...user.directPermissions]);
+  return [...all].sort((a, b) => (a === '*' ? -1 : b === '*' ? 1 : a.localeCompare(b)));
+}
+
+export function isLockedOut(user: MockUser, now = Date.now()): boolean {
+  return user.lockoutEndUtc !== null && new Date(user.lockoutEndUtc).getTime() > now;
+}
+
+/** API: AuditService.Record (newest first when listed). */
+export function recordAudit(entry: Omit<MockAuditEntry, 'id' | 'occurredAtUtc' | 'ipAddress' | 'details'> & { details?: unknown }): void {
+  auditLog.push({
+    ...entry,
+    id: auditLog.length + 1,
+    occurredAtUtc: new Date().toISOString(),
+    ipAddress: '127.0.0.1',
+    details: entry.details === undefined ? null : JSON.stringify(entry.details),
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Seeded employee generator
@@ -136,17 +198,30 @@ export const cities: MockCity[] = [
   { id: 14, name: 'Victoria', stateId: 7, countryId: 3 },
 ];
 
-/** Self-service signup defaults (API: Signup:DefaultRoles / Signup:DefaultPermissions). */
-/** Grantable scopes (API: Permissions.All, served by GET /users/permissions). */
+/** Grantable scopes (API: Permissions.All, served by GET /lookups/permissions). */
 export const PERMISSION_CATALOG: readonly string[] = [
   'employees:read', 'employees:write', 'employees:delete',
   'countries:read', 'countries:write', 'countries:delete',
   'states:read', 'states:write', 'states:delete',
   'cities:read', 'cities:write', 'cities:delete',
   'users:read', 'users:write',
+  'roles:read', 'roles:write', 'roles:delete',
+  'audit:read',
 ];
 
-export const SIGNUP_DEFAULTS = { roles: ['User'], permissions: ['employees:read'] } as const;
+/** Self-service signup default role (API: Signup:DefaultRole). */
+export const SIGNUP_DEFAULT_ROLE = 'User';
+
+/** Lockout policy (API: Security section). */
+export const SECURITY = { maxFailedLoginAttempts: 5, lockoutMinutes: 15 } as const;
+
+/** API: Permissions.IsGrantable. */
+export function isGrantable(value: string): boolean {
+  if (value === '*' || PERMISSION_CATALOG.includes(value)) return true;
+  if (!value.endsWith(':*')) return false;
+  const resource = value.slice(0, -2);
+  return PERMISSION_CATALOG.some((scope) => scope.startsWith(`${resource}:`));
+}
 
 export function nextId(rows: readonly { id: number }[]): number {
   return rows.reduce((max, row) => Math.max(max, row.id), 0) + 1;

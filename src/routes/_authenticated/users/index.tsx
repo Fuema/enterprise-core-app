@@ -1,20 +1,22 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { createFileRoute, stripSearchParams, useLocation } from '@tanstack/react-router';
-import { RotateCcw } from 'lucide-react';
+import { createFileRoute, Link, stripSearchParams, useLocation } from '@tanstack/react-router';
+import { Plus, RotateCcw } from 'lucide-react';
 import { useMemo } from 'react';
+import { GenericActionGuard } from '@/components/shared/GenericActionGuard';
 import { GenericDataTable } from '@/components/shared/GenericDataTable';
 import { Button } from '@/components/ui/Button';
 import { NativeSelect } from '@/components/ui/NativeSelect';
-import { userColumns } from '@/features/users/components/userColumns';
-import { userQueries } from '@/features/users/services/userService';
-import type { User } from '@/features/users/types/user';
+import { accessLookups } from '@/features/access/shared/accessLookups';
+import { userColumns } from '@/features/access/users/components/userColumns';
+import { userQueries } from '@/features/access/users/services/userService';
+import { USER_PERMISSIONS, type User } from '@/features/access/users/types/user';
 import {
   USER_STATUS_FILTERS,
   toUserFilter,
   userSearchDefaults,
   userSearchSchema,
   type UserSearch,
-} from '@/features/users/types/userSearch';
+} from '@/features/access/users/types/userSearch';
 import { useTableSearchNavigation } from '@/hooks/useTableSearchNavigation';
 import { searchMemory } from '@/lib/searchMemory';
 
@@ -36,6 +38,7 @@ function UsersPage() {
 
   const filter = useMemo(() => toUserFilter(search), [search]);
   const query = useQuery({ ...userQueries.list(filter), placeholderData: keepPreviousData });
+  const roles = useQuery(accessLookups.roleOptions());
 
   const resetView = () => {
     searchMemory.forget(pathname);
@@ -44,11 +47,19 @@ function UsersPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-        <p className="text-sm text-muted-foreground">
-          Accounts are created by signup. Open one to grant permissions or deactivate it.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground">Accounts, their roles and extra permissions.</p>
+        </div>
+        <GenericActionGuard permissions={[USER_PERMISSIONS.write]}>
+          <Button asChild>
+            <Link to="/users/new">
+              <Plus />
+              New user
+            </Link>
+          </Button>
+        </GenericActionGuard>
       </div>
 
       <GenericDataTable
@@ -64,6 +75,22 @@ function UsersPage() {
         onRowClick={(row) => void navigate({ to: '/users/$userId', params: { userId: row.id } })}
         toolbar={
           <div className="flex flex-wrap items-center gap-2">
+            <NativeSelect
+              aria-label="Filter by role"
+              className="h-9 w-44"
+              value={search.roleId === undefined ? '' : String(search.roleId)}
+              onChange={(event) => {
+                const roleId = Number(event.target.value);
+                onSearchChange({ roleId: roleId > 0 ? roleId : undefined, page: 1 });
+              }}
+            >
+              <option value="">All roles</option>
+              {(roles.data ?? []).map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name}
+                </option>
+              ))}
+            </NativeSelect>
             <NativeSelect
               aria-label="Filter by status"
               className="h-9 w-36"

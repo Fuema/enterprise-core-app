@@ -32,7 +32,7 @@ export async function signInHere(page: Page, user: MockUser): Promise<void> {
 
 /** Clicks "Sign out" and waits for the login page (logout must finish before the next sign-in). */
 export async function signOut(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
 }
 

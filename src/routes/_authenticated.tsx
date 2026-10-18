@@ -52,7 +52,13 @@ function AuthenticatedLayout() {
             ))}
           </nav>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">{user?.displayName}</span>
+            <Link
+              to="/account"
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              title="My account"
+            >
+              {user?.displayName}
+            </Link>
             <Button variant="ghost" size="sm" onClick={() => void signOut()} disabled={logoutMutation.isPending}>
               <LogOut />
               Sign out

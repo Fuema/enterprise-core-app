@@ -38,7 +38,7 @@ test.describe('authentication', () => {
 
   test('sign out ends the session', async ({ page }) => {
     await loginAs(page, 'viewer');
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page).toHaveURL(/\/login/);
 
     await page.goto('/');
@@ -52,7 +52,7 @@ test.describe('authentication', () => {
     await expect(nav.getByRole('link', { name: 'Countries' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /^Employees: \d+ records$/ })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'Employees Create / edit: not allowed' })).toBeVisible();
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page).toHaveURL(/\/login/); // wait for logout to complete before the next sign-in
 
     await loginAs(page, 'admin');

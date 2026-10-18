@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { USER_PERMISSIONS } from '@/features/access/users/types/user';
 import { requirePermissions } from '@/features/auth/guards';
-import { USER_PERMISSIONS } from '@/features/users/types/user';
 
 /** Feature layout: breadcrumb + users:read for every account page. */
 export const Route = createFileRoute('/_authenticated/users')({

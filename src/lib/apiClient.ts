@@ -90,6 +90,7 @@ export function refreshAccessToken(): Promise<string> {
       const body = unwrapEnvelope<unknown>(casing.fromApi(response.data));
       const { accessToken } = refreshResponseSchema.parse(body);
       authBridge().setAccessToken(accessToken);
+      authBridge().onAccessTokenRefreshed?.();
       return accessToken;
     })
     .finally(() => {

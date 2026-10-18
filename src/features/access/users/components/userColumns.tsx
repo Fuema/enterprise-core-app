@@ -1,18 +1,10 @@
 import { Link } from '@tanstack/react-router';
 import { Badge } from '@/components/ui/Badge';
 import { dataTableColumnHelper } from '@/lib/dataTable';
-import type { User } from '../types/user';
+import { isLockedOut, type User } from '../types/user';
 
 const col = dataTableColumnHelper<User>();
-
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
-
-/** "Administrator (*)", "6 permissions", "No access". */
-function accessSummary(permissions: readonly string[]): string {
-  if (permissions.includes('*')) return 'Administrator (*)';
-  if (permissions.length === 0) return 'No access';
-  return `${String(permissions.length)} permission${permissions.length === 1 ? '' : 's'}`;
-}
 
 /** Module-scope columns; sortable ids match USER_SORTABLE_FIELDS. */
 export const userColumns = col.columns([
@@ -35,21 +27,27 @@ export const userColumns = col.columns([
     id: 'roles',
     header: 'Roles',
     enableSorting: false,
-    cell: ({ row }) => row.original.roles.join(', ') || '—',
-  }),
-  col.display({
-    id: 'access',
-    header: 'Access',
-    enableSorting: false,
-    cell: ({ row }) => accessSummary(row.original.permissions),
+    cell: ({ row }) => {
+      const { roles, directPermissionCount } = row.original;
+      const names = roles.map((role) => role.name).join(', ') || 'No roles';
+      return directPermissionCount > 0 ? `${names} +${String(directPermissionCount)} extra` : names;
+    },
   }),
   col.accessor('isActive', {
     header: 'Status',
-    cell: ({ getValue }) =>
-      getValue() ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>,
+    cell: ({ row }) => (
+      <span className="flex flex-wrap gap-1">
+        {row.original.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>}
+        {isLockedOut(row.original) && <Badge variant="destructive">Locked</Badge>}
+        {row.original.mustChangePassword && <Badge variant="warning">Must change password</Badge>}
+      </span>
+    ),
   }),
-  col.accessor('createdAtUtc', {
-    header: 'Joined',
-    cell: ({ getValue }) => dateFormat.format(new Date(getValue())),
+  col.accessor('lastLoginAtUtc', {
+    header: 'Last sign-in',
+    cell: ({ getValue }) => {
+      const value = getValue();
+      return value ? dateFormat.format(new Date(value)) : 'Never';
+    },
   }),
 ]);

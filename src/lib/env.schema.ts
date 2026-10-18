@@ -41,6 +41,12 @@ export const envSchema = z
     VITE_AUTH_ME_PATH: apiPath,
     /** Self-service signup endpoint. Optional: defaults to /auth/register. */
     VITE_AUTH_REGISTER_PATH: z.preprocess((value) => (value === '' ? undefined : value), apiPath.default('/auth/register')),
+    /** Account self-service endpoints. Optional: defaults shown. */
+    VITE_AUTH_CHANGE_PASSWORD_PATH: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      apiPath.default('/auth/change-password'),
+    ),
+    VITE_AUTH_SESSIONS_PATH: z.preprocess((value) => (value === '' ? undefined : value), apiPath.default('/auth/sessions')),
     /** Show the "Create an account" link and the /signup page. Optional: default true. */
     VITE_AUTH_SIGNUP_ENABLED: z.preprocess((value) => (value === '' ? undefined : value), z.stringbool().default(true)),
 

@@ -9,6 +9,8 @@ interface AuthState {
   status: SessionStatus;
   setSession: (user: AuthUser, accessToken: string) => void;
   setAccessToken: (accessToken: string) => void;
+  /** Replaces the principal (e.g. after /auth/me reported new permissions). */
+  setUser: (user: AuthUser) => void;
   clearSession: () => void;
 }
 
@@ -18,6 +20,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
   status: 'unknown',
   setSession: (user, accessToken) => set({ user, accessToken, status: 'authenticated' }),
   setAccessToken: (accessToken) => set({ accessToken }),
+  setUser: (user) => set({ user }),
   clearSession: () => set({ user: null, accessToken: null, status: 'anonymous' }),
 }));
 
@@ -28,6 +31,10 @@ export const useAuthStore = create<AuthState>()((set) => ({
 export function isAuthenticated(): boolean {
   const { status, user } = useAuthStore.getState();
   return status === 'authenticated' && user !== null;
+}
+
+export function mustChangePassword(): boolean {
+  return useAuthStore.getState().user?.mustChangePassword === true;
 }
 
 export function currentUserCan(required: readonly string[], mode: PermissionMode = 'all'): boolean {

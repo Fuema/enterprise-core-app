@@ -24,6 +24,11 @@ export function groupCatalog(scopes: readonly string[]): PermissionResource[] {
   return [...groups].map(([resource, actions]) => ({ resource, actions }));
 }
 
+/** "countries" -> "Countries" (row label in the editor). */
+export function resourceLabel(resource: string): string {
+  return resource.charAt(0).toUpperCase() + resource.slice(1);
+}
+
 export function isSuperUser(granted: readonly string[]): boolean {
   return granted.includes('*');
 }

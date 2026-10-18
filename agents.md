@@ -13,8 +13,8 @@ Create a highly scalable, production-ready, and **100% type-safe frontend core t
 | 4 | Automated acceptance: Playwright e2e (17 tests) + `setup.ps1` | ✅ 17/17 passing 2026-10-17 |
 | 5 | Real backend (.NET 10 + SQL Server, `enterprise-core-app-claude-server`) + Employees on the real domain (DOB, gender, country/state/city cascade, address, pincode, bulk delete) | ✅ Owner-validated 2026-10-17 against the real SQL Server DB (`VITE_ENABLE_MOCKS=false`) |
 | 6 | Signup, Countries / States / Cities CRUD with per-feature permissions, registry-driven navigation + dashboard; e2e 29 tests | ✅ Validated 2026-10-17: owner browser check against the real SQL Server DB (admin creates countries, manager reads countries, viewer only reads employees) + `npm run verify:all` (43 unit, e2e 29/29) |
-
 | 7 | User administration: `/users` list + detail with permission matrix editor (users:read / users:write), deactivation, lock-out guards; e2e 36 tests | ✅ Validated 2026-10-17: `npm run verify:all` (48 unit, e2e 36/36) |
+| 8 | Authorization module: Roles CRUD, user ↔ roles + direct grants, immediate effect (security stamp), audit log, password policy + lockout + admin reset, sessions (own + admin); e2e 52 tests | 🟡 `npm run verify:all` passes 2026-10-17 (e2e 52/52) — pending owner `dotnet build` + script 003 on the real DB + browser check |
 
 Next feature? Follow **🧭 Feature Development Procedure** below and log the work in **📝 Change Log**.
 
@@ -71,6 +71,7 @@ To guarantee security, reusability, and clean environment propagation, the follo
 | `VITE_API_RESPONSE_ENVELOPE` | `true` if every response is `ApiResponse<T>` |
 | `VITE_TENANT_STRATEGY` (`subdomain \| path \| none`), `VITE_TENANT_HEADER_NAME`, `VITE_TENANT_ROOT_DOMAIN` | Multi-tenant resolution |
 | `VITE_AUTH_LOGIN_PATH`, `VITE_AUTH_REFRESH_PATH`, `VITE_AUTH_LOGOUT_PATH`, `VITE_AUTH_ME_PATH` | Auth endpoints |
+| `VITE_AUTH_CHANGE_PASSWORD_PATH` (default `/auth/change-password`), `VITE_AUTH_SESSIONS_PATH` (default `/auth/sessions`) | Optional account endpoints |
 | `VITE_HUB_BASE_URL` (empty = disabled), `VITE_HUB_MAX_RETRY_DELAY_MS`, `VITE_HUB_MAX_RETRIES` | Real-time hub |
 | `VITE_QUERY_STALE_TIME_MS`, `VITE_DEFAULT_PAGE_SIZE` | Data layer defaults |
 | `VITE_STORAGE_NAMESPACE` | Browser storage key prefix |
@@ -86,7 +87,11 @@ Adding a variable = add it to `env.schema.ts`, `vite-env.d.ts`, `.env.example` a
 | Signup | `POST {REGISTER_PATH}` `{ username, displayName, email, password, confirmPassword }` → 201 `{ accessToken, user }` + refresh cookie (least-privilege scopes); field errors as ValidationProblem |
 | Login | `POST {LOGIN_PATH}` `{ username, password }` → `{ accessToken, user? }`; sets httpOnly refresh cookie |
 | Refresh | `POST {REFRESH_PATH}` (cookie) → `{ accessToken }` |
-| Me | `GET {ME_PATH}` → `{ id, displayName, email?, roles[], permissions[] }` |
+| Me | `GET {ME_PATH}` → `{ id, displayName, email?, roles[], permissions[], mustChangePassword }` (`permissions` = effective: roles ∪ direct grants) |
+| Login lockout | After `Security:MaxFailedLoginAttempts` failures → 401 "Account temporarily locked" for `LockoutMinutes` |
+| Change password | `POST {CHANGE_PASSWORD_PATH}` `{ currentPassword, newPassword, confirmPassword }` → `{ accessToken, user, otherSessionsSignedOut }`; while `mustChangePassword` every other API call is 403 and the UI redirects to `/account` |
+| Sessions | `GET {SESSIONS_PATH}` → `[{ id, startedAtUtc, lastSeenAtUtc, expiresAtUtc, ipAddress, userAgent, isCurrent }]`; `DELETE {SESSIONS_PATH}/{id}` |
+| Immediate effect | Access tokens carry `stamp` + `sid`; when access changes (roles, grants, deactivation, password, session revoked) the next request gets 401 → silent refresh issues a token with the new permissions → the client reloads the principal and re-runs route guards |
 | Logout | `POST {LOGOUT_PATH}` clears the cookie |
 | Paging | `GET /resource?page=&pageSize=&search=&sort=field.asc,field2.desc` → `PaginatedResponse<T>` (`data`, `totalCount`, `pageSize`, `currentPage`) or a bare array |
 | Errors | RFC 7807/9457 ProblemDetails (ASP.NET Core default); `errors` dictionary is mapped onto form fields |
@@ -96,7 +101,10 @@ Adding a variable = add it to `env.schema.ts`, `vite-env.d.ts`, `.env.example` a
 | Update | `PUT /resource/{id}` → **200 + the saved entity** (written straight into the detail cache) |
 | Validation | 400 `ValidationProblem`; `errors` keys are **camelCase field names** (`email`, `cityId`), messages are user-facing |
 | Lookups | `GET /lookups/<lookup>` → `[{ id, name }]` ordered by name, readable by any signed-in user (generic `lookupQueries` + `<LookupSelect>`); managing the same data is a separate, permission-protected resource (`/countries`...) |
-| Users | `GET /users?…&isActive=`, `GET /users/{id}`, `GET /users/permissions` → `{ scopes }`, `PUT /users/{id}` `{ displayName, email, roles[], permissions[], isActive }` (no create: signup; no delete: deactivate) |
+| Users | `GET /users?…&isActive=&roleId=` (`roles: [{ id, name }]`), `GET /users/{id}` (+ `directPermissions`, `effectivePermissions`, lockout/login fields), `GET /users/role-options`, `POST /users` → `{ user, temporaryPassword }`, `PUT /users/{id}` `{ displayName, email, roleIds[], directPermissions[], isActive }`, `POST /users/{id}/reset-password` → `{ temporaryPassword }`, `POST /users/{id}/unlock`, `GET|DELETE /users/{id}/sessions[/{sessionId}]` (no delete: deactivate) |
+| Roles | `/roles` paged CRUD (`roles:read|write|delete`) `{ name, description, permissions[] }`; list has `userCount`, detail has `members`; system role (Administrator, `*`) is read-only; delete in use → 409 |
+| Audit | `GET /audit?action=&targetType=&targetId=&from=&to=` (`audit:read`, default sort newest first), `GET /audit/actions` |
+| Permission catalog | `GET /lookups/permissions` → `{ scopes }` (every grantable scope) |
 | In use | Deleting a row still referenced → **409** ProblemDetails with a human `detail` (shown next to the delete button) |
 | Bulk actions | `POST /resource/bulk-delete` `{ ids }` → `{ deletedCount }` |
 | Permissions | Access token carries `permission` claims; every endpoint enforces the same scopes as the UI (wildcards `res:*`, `*`) |
@@ -109,9 +117,14 @@ ASP.NET Core 10 minimal API + EF Core 10 + SQL Server (`AngularCrudApi`). Implem
 *   **Run:** `dotnet run --launch-profile http` → `http://localhost:7077` (Swagger `/swagger`, sample requests `AngularCrudApi.http`). Development startup applies `Database/Scripts/*.sql` (idempotent: `AppUsers`, `RefreshTokens`, unique index on `tblEmployeeMaster.EmailId`) and seeds `admin`/`manager`/`viewer` (password = username) when `AppUsers` is empty.
 *   **Frontend against it:** create `.env.development.local` (owner, not committed) with `VITE_API_BASE_URL=http://localhost:7077/api` and `VITE_ENABLE_MOCKS=false`. The e2e suite keeps using the mock (its env is fixed in `e2e/e2e.env.ts`).
 *   **Auth:** `Auth/` — HS256 JWT (15 min, claims `sub`, `name`, `email`, `role`, `permission`), refresh token = random 384-bit value stored as SHA-256 in `RefreshTokens`, single-use with rotation and reuse detection, cookie `ec_refresh` (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/auth`). Login is rate-limited (10/min/IP). `Jwt:SigningKey` comes from `dotnet user-secrets` / `Jwt__SigningKey`; Development falls back to an ephemeral key; other environments fail fast without one.
-*   **Policies:** one per scope in `Auth/Permissions.cs` (`Permissions.All`); groups use `.RequireAuthorization(Permissions.EmployeesRead)` and endpoints add write/delete. Scopes must equal the frontend `*_PERMISSIONS` constants. Current scopes: `employees`, `countries`, `states`, `cities` × `read|write|delete`.
-*   **Signup:** `POST /api/auth/register` (rate-limited like login). `Signup` config section: `Enabled`, `DefaultRoles` (`User`), `DefaultPermissions` (`employees:read`). Granting more access = update `dbo.AppUsers.Permissions` (no user-admin UI yet).
-*   **Users:** `Endpoint/UserEndpoints.cs` (`users:read` / `users:write`). Permissions are validated against `Permissions.All` (`IsGrantable`: a scope, `resource:*` or `*`); an admin cannot deactivate themselves or drop their own `users:write`; deactivating revokes the account's refresh tokens (signed out at the next refresh, ≤ `Jwt:AccessTokenMinutes`). Permission changes apply from the user's next token or sign-in.
+*   **Policies:** one per scope in `Auth/Permissions.cs` (`Permissions.All`); groups use `.RequireAuthorization(Permissions.EmployeesRead)` and endpoints add write/delete. Scopes must equal the frontend `*_PERMISSIONS` constants. Current scopes: `employees`, `countries`, `states`, `cities`, `roles` × `read|write|delete`, `users:read|write`, `audit:read`.
+*   **Signup:** `POST /api/auth/register` (rate-limited like login). `Signup` config section: `Enabled`, `DefaultRole` (`User`), `DefaultRolePermissions` (`employees:read`, used only if signup has to create that role).
+*   **Access model (script `003`):** `Roles` / `RolePermissions` / `UserRoles` / `UserPermissions` (direct grants). Effective = roles ∪ direct grants (`Auth/AccessService.cs`). Administrator is a system role holding `*`: cannot be renamed, emptied or deleted, and at least one active user always holds it. The legacy `AppUsers.Roles` / `Permissions` columns were migrated once (recorded in `SchemaMigrations`) and are no longer read.
+*   **Immediate effect:** `AppUsers.SecurityStamp` rotates on every access change; `Auth/SessionValidator.cs` (JwtBearer `OnTokenValidated`, 30 s `IMemoryCache`, evicted explicitly on change) rejects tokens with a stale stamp, a revoked session or an inactive account.
+*   **Account security** (`Security` section): lockout after `MaxFailedLoginAttempts` (5) for `LockoutMinutes` (15); `PasswordPolicy` (≥ 8 chars, upper, lower, digit); admin reset issues a one-time temporary password (`TemporaryPasswordLength`) and sets `MustChangePassword` (the `pwd_change` claim makes every permission policy fail). Changing the password signs out other sessions.
+*   **Sessions:** refresh-token chains share `SessionId` (IP + user agent recorded); `Auth/SessionManager.cs` lists/revokes; `/api/auth/sessions` (own) and `/api/users/{id}/sessions` (admin).
+*   **Audit:** `Auth/AuditService.cs` adds an `AuditLog` row in the caller's `SaveChanges` (sign-in success/failure/lockout, password changes/resets, user and role create/update/delete, session revocation); `Endpoint/AuditEndpoints.cs`.
+*   **Users / Roles:** `Endpoint/UserEndpoints.cs` (`users:read` / `users:write`), `Endpoint/RoleEndpoints.cs` (`roles:*`). Permissions are validated with `Permissions.IsGrantable` (a scope, `resource:*` or `*`). Guards: no self-deactivation, nobody removes their own `users:write`, the last active Administrator keeps the role, a role in use cannot be deleted.
 *   **Locations:** `Endpoint/CountryEndpoints.cs`, `StateEndpoints.cs`, `CityEndpoints.cs` (paged CRUD with usage counts, unique names per parent, 409 while in use, no re-parenting while children/employees exist; a city's country is copied from its state); `LookupEndpoints.cs` serves `/api/lookups/*` for dropdowns. Demo manager = employees read/write, countries + states read, cities read/write (script `002` upgrades an older seed).
 *   **Generic building blocks** (`Infrastructure/`): `PageRequest` (`[AsParameters]`, page size clamped 1–100) + `ToPagedAsync()` → `PagedResponse<T>`; `SortMap<T>` (allow-listed `field.asc,field.desc`, default sort, never SQL from input); `.WithValidation<TRequest>()` (DataAnnotations → camelCase `ValidationProblem`; minimal APIs do not run DataAnnotations on their own).
 *   **Rules:** response DTOs are classes with `init` properties (positional records stop EF from composing `Where/OrderBy` on the projection); cross-field rules return `Results.ValidationProblem` keyed by field; unique-index violations (SQL 2601/2627) map to the field; schema changes are new idempotent `Database/Scripts/00N_*.sql` files (the DB is database-first, no EF migrations).
@@ -144,7 +157,10 @@ Generate a monorepo-ready layout adhering strictly to a **domain-driven feature 
 │   ├── helpers.ts        # loginAs, table/column readers, mock hooks, breadcrumb locator
 │   ├── global.d.ts       # window.__mockApi typing for page.evaluate
 │   ├── auth.spec.ts      # 6 tests: redirects, validation, server errors, session restore, logout, guards
-│   └── employees.spec.ts # 11 tests: permissions, CRUD, URL state, search memory, silent refresh, 404
+│   ├── employees.spec.ts # 11 tests: permissions, CRUD, URL state, search memory, silent refresh, 404
+│   ├── locations.spec.ts / signup.spec.ts
+│   ├── helpers-access.ts # openFromNav, openUser, openRole, signInWith
+│   └── users / roles / audit / account .spec.ts  # authorization module (23 tests)
 ├── tsconfig.json / tsconfig.app.json / tsconfig.node.json / tsconfig.e2e.json
 ├── vite.config.ts / vitest.config.ts / eslint.config.js / components.json
 ├── public/               # favicon.svg, mockServiceWorker.js (generated by msw init)
@@ -176,7 +192,8 @@ src/
 │       └── Form.tsx      # Pre-wrapped React Hook Form accessible primitives
 ├── features/             # EXTENSION TIER
 │   ├── auth/             # Modular login/session framework
-│   │   ├── components/   # LoginForm, SignupForm
+│   │   ├── components/   # LoginForm, SignupForm, ChangePasswordForm, SessionList
+│   │   ├── utils/        # userAgent.ts (describeUserAgent)
 │   │   ├── hooks/        # useLogin, useSignup, useLogout
 │   │   ├── schemas/      # loginSchema, signupSchema (Zod, mirrors RegisterRequest)
 │   │   ├── services/     # authService (login, register, logout, restoreSession, fetchCurrentUser)
@@ -189,7 +206,11 @@ src/
 │   │   ├── forms/        # employeeFormSchema.ts (Zod + defaults/mappers), EmployeeForm.tsx (GenericFormElement), EmployeeLocationFields.tsx (country→state→city cascade)
 │   │   ├── services/     # employeeService.ts (extends BaseApiService, + deleteMany) + employeeQueries (entityQueries) + locationQueries (re-export of locations/lookups)
 │   │   └── types/        # employee.ts (entity schema, sortable fields, permissions), employeeSearch.ts (URL schema + filter mapper)
-│   ├── users/            # Account admin: types (user, userSearch), services (userService + permissionCatalog query), forms (UserForm, PermissionEditor, permissionMatrix.ts pure helpers + test), components (userColumns)
+│   ├── access/           # Domain group: authorization administration
+│   │   ├── shared/       # permissionMatrix.ts (+ test), PermissionMatrixEditor.tsx (controlled), accessLookups.ts (permission catalog, role options)
+│   │   ├── users/        # types, services (create, reset password, unlock, sessions), forms (UserForm/UserCreateForm, AccessFields: roles + extra grants), components (userColumns, UserSecurityPanel)
+│   │   ├── roles/        # types, services (roleMutationOptions invalidates access lookups + users), forms (RoleForm; system role read-only), components (roleColumns)
+│   │   └── audit/        # types (action labels), services, components (auditColumns, AuditTarget) — read only
 │   └── locations/        # Domain group: three sub-features with the employees shape + shared lookups
 │       ├── lookups.ts    # locationLookups (countries/states/cities dropdowns) — the ONLY file other features may import
 │       ├── countries/    # types (country, countrySearch), services (countryService + countryMutationOptions), forms, components
@@ -229,7 +250,10 @@ src/
 │   ├── _authenticated/employees/$employeeId.tsx   # Detail/edit (typed numeric param, breadcrumb from loader data)
 │   ├── _authenticated/{countries,states,cities}.tsx + /{index,new,$<entity>Id}.tsx   # Same pattern as employees
 │   ├── login.tsx         # + "Create an account" link (VITE_AUTH_SIGNUP_ENABLED)
-│   ├── _authenticated/users.tsx + /users/{index,$userId}.tsx   # Users list (status filter) + detail/edit (no create, no delete)
+│   ├── _authenticated/users.tsx + /users/{index,new,$userId}.tsx   # Users list (status + role filters), create (temporary password), detail/edit + security panel
+│   ├── _authenticated/roles.tsx + /roles/{index,new,$roleId}.tsx   # Roles CRUD + members
+│   ├── _authenticated/audit.tsx + /audit/index.tsx                 # Audit log (action, target, date range filters)
+│   ├── _authenticated/account.tsx    # Own account: change password, "Where you're signed in" (forced when mustChangePassword)
 │   ├── signup.tsx        # Public self-service registration → signed in → dashboard
 │   └── forbidden.tsx
 ├── services/             # STEP 2: GENERIC SERVICE LAYER
@@ -357,7 +381,7 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 - `<entities>/new.tsx`: `beforeLoad: requirePermissions([write])`, `persistSearch: false`, `useCreateEntity`.
 - `<entities>/$<entity>Id.tsx`: `params: { parse, stringify }` for non-string ids; loader → `ensureQueryData(detail)`, 404 → `throw notFound()`; breadcrumb resolver validates `loaderData` with the Zod schema; page uses `useSuspenseQuery(detail)`; edit form inside `<GenericActionGuard permissions={[write]} fallback={readOnlyView}>`.
 
-**7. Navigation & dashboard** — add ONE entry to `FEATURES` in `src/app/featureRegistry.ts` (label, `to`, icon, `<ENTITY>_PERMISSIONS`, `useCount` via `<entity>Queries.list({ page: 1, pageSize: 1 })`). The header link, the dashboard card (with record count) and the "Your access" row are generated and guarded by the feature's read scope; never hand-write nav links.
+**7. Navigation & dashboard** — add ONE entry to `FEATURES` in `src/app/featureRegistry.ts` (label, `to`, icon, `<ENTITY>_PERMISSIONS` (`write`/`delete` optional for read-only features), `useCount` via `<entity>Queries.list({ page: 1, pageSize: 1 })`). The header link, the dashboard card (with record count) and the "Your access" row are generated and guarded by the feature's read scope; never hand-write nav links.
 
 **8. Mock API** — `mocks/handlers/<entities>.ts` + register in `mocks/browser.ts`; DTOs and seed data in `mocks/db.ts` (no feature imports); use `authorize(request, [scope])`, `ok()`, `problem()`, `queryParam()`; add demo-user scopes if needed.
 
@@ -377,7 +401,7 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 
 ## ✅ Agent Working Rules
 *   **Definition of done:** `npm run verify:all` passes = `verify` (typecheck → lint → unit tests → production build) + `test:e2e` (Playwright, automated browser checklist). Report actual results; never claim success without running it. Playwright records the outcome in `test-results/.last-run.json` (`"status": "passed"`), which an agent can read to confirm a run.
-*   **Verification procedure for agents working remotely** (no Windows-native binaries): run `node node_modules/@tanstack/router-cli/bin/tsr.cjs generate`, `node node_modules/typescript/bin/tsc -b` and `node node_modules/eslint/bin/eslint.js .` in the project folder; the owner runs `npm run test`, `npm run build`, `npm run test:e2e` and `npm run dev` on Windows (Vite/Vitest/Playwright need the native binaries and browser).
+*   **Verification procedure for agents working remotely** (no Windows-native binaries): run `node node_modules/@tanstack/router-cli/bin/tsr.cjs generate`, `node node_modules/typescript/bin/tsc -b` and `node node_modules/eslint/bin/eslint.js .` in the project folder (a whole-repo lint can exceed a remote shell's time limit: lint in batches, e.g. `src/features`, `src/routes src/hooks src/services`, `src/mocks e2e`, `src/app src/lib src/components src/types src/main.tsx src/App.tsx`); the owner runs `npm run test`, `npm run build`, `npm run test:e2e` and `npm run dev` on Windows (Vite/Vitest/Playwright need the native binaries and browser).
 *   **Before coding against any library, check the INSTALLED major version** (`node_modules/<pkg>/package.json`) and read its bundled agent guides if present (`node_modules/<pkg>/skills/`). `"latest"` pulled new majors twice (TanStack Table 9, MSW 3) whose APIs differed from older documentation.
 *   `.env*` files (other than `.env.example`) are owned by the developer; agents must not create or edit them. Document required values in `.env.example` and the Variable Catalogue instead.
 *   **Every change is logged** in the 📝 Change Log (date, what, why, files).
@@ -432,6 +456,14 @@ Use `features/employees` as the template. Replace `<entity>` / `<Entity>` / `<en
 
 ## 📝 Change Log
 Newest first. One entry per working session; list what changed, why, and the key files.
+
+### 2026-10-17 — Authorization module
+- **Why:** product-grade access control: reusable roles instead of per-user permission lists, changes effective immediately, and traceability.
+- **API:** script `003_rbac_security_audit.sql` (roles, memberships, direct grants, security columns, session columns, `AuditLog`, one-time data migration). `Auth/`: `AccessService`, `SessionValidator`, `SessionManager`, `AuditService`, `SecurityOptions` (`PasswordPolicy`). `AuthEndpoints` rewritten (lockout, audit, `change-password`, `sessions`), `UserEndpoints` v2 (create with temporary password, roles + direct grants, reset password, unlock, sessions), new `RoleEndpoints`, `AuditEndpoints`; permission catalog moved to `/api/lookups/permissions`. New scopes `roles:*`, `audit:read`.
+- **Frontend:** `features/users` replaced by the `features/access` group (users, roles, audit, shared matrix editor); `/account` route; `authBridge.onAccessTokenRefreshed` → `reloadPrincipal` + `router.invalidate()` so guards follow permission changes without sign-out; `guards.ts` forces `/account` while `mustChangePassword`; registry entries Users, Roles, Audit log (`write` optional); `Badge` variants `destructive`, `warning`.
+- **Mock:** roles, direct grants, lockout, audit, sessions, change/reset password mirrored in `mocks/db.ts` + `handlers/{auth,users,roles,audit,lookups}.ts`.
+- **E2E:** `helpers-access.ts`; `users.spec.ts` (12), `roles.spec.ts` (5), `audit.spec.ts` (2), `account.spec.ts` (3) → 52 tests. Session controls read "End session" / "End all sessions" so they never collide with the header's "Sign out".
+- Validated: `npm run verify:all` (e2e 52/52). Pending: owner `dotnet build`/run (script 003) and browser check against the real DB.
 
 ### 2026-10-17 — User administration screen
 - **API:** `Endpoint/UserEndpoints.cs` — paged `GET /api/users` (search, `isActive` filter, sort), `GET /api/users/{id}`, `GET /api/users/permissions` (catalog = `Permissions.All`), `PUT /api/users/{id}` (display name, email, roles, permissions, active). New scopes `users:read`, `users:write` (admin `*` has them). Validation: unknown scopes, duplicate email, role format; lock-out guards (no self-deactivation, no removing own `users:write`); deactivation revokes refresh tokens.
